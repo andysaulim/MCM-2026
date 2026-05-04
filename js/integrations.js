@@ -12,8 +12,8 @@ const MCM_CONFIG = {
     scopes: ['weight', 'sleep', 'profile'],
   },
   strava: {
-    clientId: '',                                          // from https://www.strava.com/settings/api
-    workerUrl: '',                                         // your Cloudflare Worker URL, e.g. https://mcm-strava.<account>.workers.dev
+    clientId: '235130',
+    workerUrl: 'https://mcm-2026.andysaulim.workers.dev',
     scopes: ['read', 'activity:read'],
   },
 };
