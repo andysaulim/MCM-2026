@@ -1,419 +1,396 @@
-/* ============================================================
-   MCM 2026 Training — Design System
-   Warm dark mode, single accent, Inter/Outfit/JetBrains Mono
-   ============================================================ */
+// ============================================================
+// MCM 2026 — App logic
+// localStorage for persistence (works on GitHub Pages)
+// ============================================================
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+const START_DATE = new Date('2026-05-04T00:00:00');
+const RACE_DATE = new Date('2026-10-25T07:55:00');
+const STATE_KEY = 'mcm2026_andy';
 
-:root {
-  /* Surfaces */
-  --bg: #0d1117;
-  --bg-elev: #161b22;
-  --card: #1c2128;
-  --card-hover: #262c36;
-  --border: #30363d;
-  --border-soft: #21262d;
+// ===== STATE MANAGEMENT =====
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return { ...defaultState(), ...parsed };
+  } catch (e) { return defaultState(); }
+}
+function defaultState() {
+  return { done: {}, skip: {}, notes: {}, weights: [], sleep: [], extras: {} };
+}
+function saveState(s) {
+  try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) {}
+}
+let state = loadState();
+let viewWeek = 1;
+let noteContext = null;
 
-  /* Text — warm, never pure white */
-  --text: #f0e9d6;
-  --text-dim: #b8b1a3;
-  --text-faint: #6e7681;
-
-  /* Accents */
-  --accent: #f97316;          /* warm orange — marathon dawn */
-  --accent-soft: rgba(249, 115, 22, 0.12);
-  --accent-dim: #c2410c;
-
-  /* Semantic */
-  --easy: #66bb6a;
-  --easy-soft: rgba(102, 187, 106, 0.12);
-  --quality: #facc15;
-  --quality-soft: rgba(250, 204, 21, 0.12);
-  --long: #38bdf8;
-  --long-soft: rgba(56, 189, 248, 0.12);
-  --strength: #a78bfa;
-  --strength-soft: rgba(167, 139, 250, 0.12);
-  --rest: #6e7681;
-  --rest-soft: rgba(110, 118, 129, 0.12);
-  --tune: #ec4899;
-  --tune-soft: rgba(236, 72, 153, 0.12);
-  --race: #ef4444;
-  --race-soft: rgba(239, 68, 68, 0.15);
-  --done: #22c55e;
-  --warn: #f59e0b;
-
-  /* Typography */
-  --font-display: 'Outfit', -apple-system, system-ui, sans-serif;
-  --font-body: 'Inter', -apple-system, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
-
-  /* Spacing */
-  --space-1: 4px; --space-2: 8px; --space-3: 12px;
-  --space-4: 16px; --space-5: 20px; --space-6: 24px;
-  --space-8: 32px; --space-10: 40px; --space-12: 48px;
-
-  /* Radius */
-  --radius: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+// ===== DATE MATH =====
+function todayDate() {
+  // For testing, can override here:
+  return new Date();
+}
+function getCurrentWeekDay() {
+  const today = todayDate();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(START_DATE); start.setHours(0, 0, 0, 0);
+  const diffMs = today - start;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { week: 1, dayIdx: 0, beforeStart: true };
+  if (diffDays >= 175) return { week: 25, dayIdx: 6, afterEnd: true };
+  return {
+    week: Math.floor(diffDays / 7) + 1,
+    dayIdx: diffDays % 7,
+    beforeStart: false,
+    afterEnd: false,
+  };
+}
+function daysToRace() {
+  const today = todayDate(); today.setHours(0, 0, 0, 0);
+  const race = new Date(RACE_DATE); race.setHours(0, 0, 0, 0);
+  return Math.floor((race - today) / (1000 * 60 * 60 * 24));
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+// ===== KEY HELPERS =====
+function dayKey(week, dayIdx) { return `w${week}d${dayIdx}`; }
+function isDone(wk, di) { return !!state.done[dayKey(wk, di)]; }
+function isSkipped(wk, di) { return !!state.skip[dayKey(wk, di)]; }
+function getExtras(wk, di) { return state.extras[dayKey(wk, di)] || {}; }
 
-html, body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
+// ===== TYPE HELPERS =====
+function typeClass(t) {
+  return ({ easy:'easy', quality:'quality', long:'long', strength:'strength', rest:'rest', tune:'tune', race:'race' })[t] || 'easy';
 }
+function typeName(t) {
+  return ({ easy:'Easy', quality:'Quality', long:'Long', strength:'Strength', rest:'Rest', tune:'Tune-up', race:'RACE' })[t] || t;
+}
+function whenClass(w) { return w === 'AM' ? 'when-am' : w === 'PM' ? 'when-pm' : 'when-rest'; }
 
-body {
-  background:
-    radial-gradient(ellipse 1000px 500px at top, rgba(249, 115, 22, 0.04), transparent 60%),
-    var(--bg);
-}
+// ===== TODAY CARD =====
+function renderToday() {
+  const cur = getCurrentWeekDay();
+  const wk = PLAN[cur.week - 1];
+  const day = wk.days[cur.dayIdx];
+  const t = typeClass(day.type);
+  const done = isDone(cur.week, cur.dayIdx);
+  const card = document.getElementById('today-card');
 
-a { color: var(--accent); text-decoration: none; }
-a:hover { color: var(--accent-dim); }
+  let banner = '';
+  if (cur.beforeStart) {
+    const today = todayDate(); today.setHours(0,0,0,0);
+    const start = new Date(START_DATE); start.setHours(0,0,0,0);
+    const daysUntil = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+    const dayWord = daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+    banner = `<div class="callout"><div class="callout-title">Plan starts ${dayWord}</div><p>Training begins Monday May 4. The Mon May 4 workout is shown below — get familiar with the structure before you start.</p></div>`;
+  }
+  if (cur.afterEnd) banner = `<div class="callout success"><div class="callout-title">Race complete</div><p>You crossed the line. Hope it went well.</p></div>`;
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
-}
+  // Workout structure rows
+  let structureHTML = '';
+  if (day.workout && day.workout.structure && day.workout.structure.length > 0) {
+    const rows = day.workout.structure.map(row => `
+      <div class="workout-row">
+        <div class="workout-label">${row.label}</div>
+        <div class="workout-detail">${row.detail}</div>
+        <div class="workout-miles">${row.miles > 0 ? row.miles.toFixed(row.miles % 1 === 0 ? 0 : 2) + ' mi' : ''}</div>
+      </div>
+    `).join('');
+    structureHTML = `
+      <div class="workout-structure">
+        ${rows}
+        <div class="workout-total">
+          <span class="workout-total-label">Total</span>
+          <span class="workout-total-val">${day.workout.total} mi · ~${day.timeMin} min</span>
+        </div>
+      </div>
+    `;
+  }
 
-/* ===== TOP NAV ===== */
-.topnav {
-  position: sticky; top: 0; z-index: 50;
-  background: rgba(13, 17, 23, 0.85);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-soft);
-  padding: 14px 24px;
-}
-.topnav-inner {
-  max-width: 1200px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
-}
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark {
-  width: 32px; height: 32px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), #fb923c);
-  display: grid; place-items: center;
-  font-family: var(--font-display);
-  font-weight: 900; font-size: 16px;
-  color: #1a0a00;
-  letter-spacing: -0.05em;
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
-}
-.brand-text {
-  font-family: var(--font-display);
-  font-weight: 800; font-size: 17px;
-  letter-spacing: -0.02em;
-}
-.brand-sub {
-  display: block;
-  font-family: var(--font-body);
-  font-weight: 500; font-size: 11px;
-  color: var(--text-faint);
-  letter-spacing: 0.05em;
-  margin-top: -2px;
-}
-
-.nav-tabs {
-  display: flex; gap: 2px;
-  background: var(--bg-elev);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--border-soft);
-}
-.nav-tab {
-  font-family: var(--font-body);
-  font-weight: 600; font-size: 13px;
-  color: var(--text-dim);
-  padding: 7px 14px;
-  border-radius: 7px;
-  transition: all 0.15s;
-  text-decoration: none;
-}
-.nav-tab:hover { color: var(--text); background: var(--card); }
-.nav-tab.active {
-  background: var(--card);
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  card.innerHTML = `
+    ${banner}
+    <div class="today-meta">
+      <span class="today-kicker">Today</span>
+      <span class="today-date">${day.day} · ${day.date} · 2026</span>
+      <span class="today-week-tag">Week ${cur.week}/25 · ${wk.phase}</span>
+    </div>
+    <div class="today-type-pill t-${t}">${typeName(day.type)} · ${day.when}</div>
+    <h2 class="today-title">${day.title}</h2>
+    <p class="today-desc">${day.desc}</p>
+    ${structureHTML}
+    <div class="today-meta-row">
+      <div class="meta-item">
+        <span class="meta-lbl">Pace</span>
+        <span class="meta-val font-mono">${day.pace}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">Where</span>
+        <span class="meta-val">${day.route}</span>
+      </div>
+    </div>
+    <div class="today-actions">
+      <button class="btn ${done ? 'btn-done' : 'btn-primary'}" onclick="toggleComplete(${cur.week}, ${cur.dayIdx})">
+        ${done ? '✓ Done' : 'Mark done'}
+      </button>
+      <button class="btn" onclick="toggleSkip(${cur.week}, ${cur.dayIdx})">${isSkipped(cur.week, cur.dayIdx) ? '✓ Skipped' : 'Skip'}</button>
+      <button class="btn" onclick="openNoteModal(${cur.week}, ${cur.dayIdx})">+ Note</button>
+    </div>
+    ${renderChecklist(cur.week, cur.dayIdx, day)}
+  `;
 }
 
-.nav-stats {
-  display: flex; gap: 20px;
-  font-size: 12px; color: var(--text-dim);
-}
-.nav-stat { display: flex; flex-direction: column; align-items: flex-end; }
-.nav-stat-num {
-  font-family: var(--font-mono);
-  color: var(--text); font-weight: 700;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-.nav-stat-lbl {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-faint);
-  margin-top: 2px;
-}
-
-main { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
-
-/* ===== TYPOGRAPHY ===== */
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: var(--text);
-}
-h1 { font-size: 32px; font-weight: 800; }
-h2 { font-size: 24px; }
-h3 { font-size: 18px; }
-h4 { font-size: 15px; font-weight: 600; }
-
-p { color: var(--text-dim); }
-strong { color: var(--text); font-weight: 600; }
-em { color: var(--text-dim); }
-
-.section-title {
-  font-family: var(--font-body);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-faint);
-  font-weight: 700;
-  margin: 0 0 16px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.section-title-rt {
-  font-size: 12px;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--text-faint);
-  font-weight: 500;
+// ===== DAILY CHECKLIST =====
+function renderChecklist(wk, di, day) {
+  if (!day.extras || day.extras.length === 0) return '';
+  const extras = getExtras(wk, di);
+  const items = day.extras.map(ex => {
+    const isDone = !!extras[ex];
+    const cfg = ({
+      pushups: { icon: '💪', label: 'Pushups', detail: `Throughout the day · target ${PLAN[wk-1].pushups || 40} total` },
+      circuit: { icon: '🔄', label: 'Core + lower circuit', detail: '8–10 min · squats, bridges, planks, dead bugs' },
+      bands:   { icon: '🎗', label: 'Resistance bands', detail: '7 min · monster walks, lateral walks, clamshells' },
+    })[ex];
+    if (!cfg) return '';
+    return `
+      <div class="check-item ${isDone ? 'done' : ''}" onclick="toggleExtra(${wk}, ${di}, '${ex}')">
+        <div class="check-box">${isDone ? '✓' : ''}</div>
+        <div class="check-icon t-${ex === 'pushups' ? 'tune' : ex === 'circuit' ? 'strength' : 'easy'}">${cfg.icon}</div>
+        <div class="check-content">
+          <div class="check-label">${cfg.label}</div>
+          <div class="check-detail">${cfg.detail}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="checklist">
+      <div class="checklist-title">Daily extras</div>
+      <div class="checklist-items">${items}</div>
+    </div>
+  `;
 }
 
-.page-header {
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.page-kicker {
-  font-family: var(--font-body);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--accent);
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.page-title {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
-  margin-bottom: 6px;
-}
-.page-subtitle {
-  font-size: 15px;
-  color: var(--text-dim);
-  max-width: 600px;
+// ===== TOP STATS + COUNTDOWN + PROGRESS =====
+function renderTopStats() {
+  const days = daysToRace();
+  document.getElementById('cd-days').textContent = days >= 0 ? days : '0';
+  document.getElementById('ts-days').textContent = days >= 0 ? days : '0';
+
+  // Total miles done
+  let totalDone = 0, totalPlanned = 0, completedCount = 0, totalCount = 0;
+  PLAN.forEach((wk, i) => {
+    wk.days.forEach((d, di) => {
+      if (d.type !== 'rest') totalCount++;
+      totalPlanned += d.workout?.total || 0;
+      if (isDone(i + 1, di)) {
+        if (d.type !== 'rest') completedCount++;
+        totalDone += d.workout?.total || 0;
+      }
+    });
+  });
+  document.getElementById('ts-miles').textContent = Math.round(totalDone);
+  document.getElementById('ps-miles').textContent = Math.round(totalDone);
+  const completionPct = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  document.getElementById('ps-completion').textContent = completionPct + '%';
+  document.getElementById('ps-bar').style.width = completionPct + '%';
+
+  // Weight delta
+  if (state.weights.length > 0) {
+    const last = state.weights[state.weights.length - 1].lbs;
+    const start = state.weights[0].lbs;
+    const lost = (start - last).toFixed(1);
+    document.getElementById('ps-weight').textContent = lost > 0 ? '−' + lost : (lost < 0 ? '+' + Math.abs(lost) : '0');
+    document.getElementById('last-weight').textContent = `Last: ${last} lbs`;
+  } else {
+    document.getElementById('ps-weight').textContent = '—';
+    document.getElementById('last-weight').textContent = `Start: ${RUNNER.startWeight} lbs`;
+  }
+
+  // Sleep avg (last 7)
+  if (state.sleep.length > 0) {
+    const recent = state.sleep.slice(-7);
+    const avg = recent.reduce((s, x) => s + x.hrs, 0) / recent.length;
+    document.getElementById('ps-sleep').textContent = avg.toFixed(1);
+    const last = state.sleep[state.sleep.length - 1].hrs;
+    document.getElementById('last-sleep').textContent = `Last: ${last} hrs`;
+  } else {
+    document.getElementById('ps-sleep').textContent = '—';
+    document.getElementById('last-sleep').textContent = `Target: 6.4 hrs`;
+  }
 }
 
-/* ===== CARDS ===== */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-}
-.card-hover { transition: all 0.15s; }
-.card-hover:hover {
-  background: var(--card-hover);
-  transform: translateY(-1px);
-}
-
-/* ===== BUTTONS ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-.btn:hover { background: var(--card-hover); border-color: #3a4358; }
-.btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1a0a00;
-  font-weight: 700;
-}
-.btn-primary:hover { background: #ea580c; border-color: #ea580c; }
-.btn-done {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.4);
-  color: var(--done);
-}
-.btn-skip { color: var(--text-dim); }
-
-/* ===== TYPE COLORS ===== */
-.t-easy     { color: var(--easy);     background: var(--easy-soft); }
-.t-quality  { color: var(--quality);  background: var(--quality-soft); }
-.t-long     { color: var(--long);     background: var(--long-soft); }
-.t-rest     { color: var(--rest);     background: var(--rest-soft); }
-.t-strength { color: var(--strength); background: var(--strength-soft); }
-.t-tune     { color: var(--tune);     background: var(--tune-soft); }
-.t-race     { color: var(--race);     background: var(--race-soft); }
-
-.bar-easy     { background: var(--easy); }
-.bar-quality  { background: var(--quality); }
-.bar-long     { background: var(--long); }
-.bar-rest     { background: var(--rest); }
-.bar-strength { background: var(--strength); }
-.bar-tune     { background: var(--tune); }
-.bar-race     { background: var(--race); }
-
-/* ===== AM/PM PILLS ===== */
-.when-pill {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 7px;
-  border-radius: 5px;
-  letter-spacing: 0.05em;
-}
-.when-am   { background: rgba(250, 204, 21, 0.15); color: var(--quality); }
-.when-pm   { background: rgba(167, 139, 250, 0.15); color: var(--strength); }
-.when-rest { background: rgba(110, 118, 129, 0.12); color: var(--text-faint); }
-
-/* ===== TABLES ===== */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-th, td {
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-soft);
-  vertical-align: top;
-}
-th {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-faint);
-  background: var(--bg-elev);
-}
-td.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--text);
+// ===== THIS WEEK STRIP =====
+function renderThisWeek() {
+  const cur = getCurrentWeekDay();
+  const wk = PLAN[cur.week - 1];
+  document.getElementById('thisweek-label').textContent = `Week ${cur.week} · ${wk.phase} · ${wk.miles} mi`;
+  document.getElementById('week-strip').innerHTML = wk.days.map((d, di) => {
+    const isToday = di === cur.dayIdx;
+    const done = isDone(cur.week, di);
+    const t = typeClass(d.type);
+    return `
+      <a class="day-pill ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}" onclick="jumpToWeek(${cur.week}); event.preventDefault();" href="#week-detail">
+        <div class="dp-day">${d.day}</div>
+        <div class="dp-date">${d.date.split(' ')[1]}</div>
+        <div class="dp-bar bar-${t}"></div>
+        <div class="dp-when">${d.when === 'REST' ? '–' : d.when}</div>
+      </a>
+    `;
+  }).join('');
 }
 
-/* ===== CALLOUTS ===== */
-.callout {
-  background: var(--bg-elev);
-  border-left: 3px solid var(--accent);
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin: 20px 0;
-}
-.callout-title {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  margin-bottom: 8px;
-}
-.callout p { font-size: 14px; margin-bottom: 6px; }
-.callout p:last-child { margin-bottom: 0; }
-.callout.warn { border-left-color: var(--race); }
-.callout.warn .callout-title { color: var(--race); }
-.callout.success { border-left-color: var(--done); }
-.callout.success .callout-title { color: var(--done); }
-
-/* ===== TOAST ===== */
-.toast {
-  position: fixed; bottom: 24px; left: 50%;
-  transform: translateX(-50%) translateY(120px);
-  background: var(--card);
-  border: 1px solid var(--border);
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px; font-weight: 600;
-  z-index: 200;
-  transition: transform 0.3s;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-.toast.show { transform: translateX(-50%) translateY(0); }
-.toast.success { border-color: rgba(34, 197, 94, 0.4); color: var(--done); }
-.toast.warn { border-color: rgba(245, 158, 11, 0.4); color: var(--warn); }
-
-/* ===== FORM INPUTS ===== */
-input[type="number"], input[type="text"], textarea {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 11px 14px;
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 14px;
-  width: 100%;
-}
-input:focus, textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+// ===== WEEK NAV =====
+function renderWeekNav() {
+  const cur = getCurrentWeekDay();
+  document.getElementById('week-nav').innerHTML = PLAN.map(wk => {
+    const isCurrent = wk.week === cur.week;
+    const isPhase0 = wk.week <= 3;
+    const allDone = wk.days.every((d, di) => d.type === 'rest' || isDone(wk.week, di));
+    return `<button class="week-btn ${viewWeek === wk.week ? 'active' : ''} ${isCurrent ? 'is-current' : ''} ${isPhase0 ? 'phase-0' : ''} ${allDone ? 'complete' : ''}" onclick="jumpToWeek(${wk.week})">${wk.week}</button>`;
+  }).join('');
 }
 
-.input-row {
-  display: flex; gap: 8px;
-  margin-bottom: 16px;
+// ===== WEEK DETAIL =====
+function renderWeekDetail() {
+  const wk = PLAN[viewWeek - 1];
+  const cur = getCurrentWeekDay();
+  const detail = document.getElementById('week-detail');
+  if (!detail) return;
+
+  const dayRows = wk.days.map((d, di) => {
+    const isToday = wk.week === cur.week && di === cur.dayIdx;
+    const done = isDone(wk.week, di);
+    const skipped = isSkipped(wk.week, di);
+    const t = typeClass(d.type);
+    const note = state.notes[dayKey(wk.week, di)];
+    return `
+      <div class="day-row ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}">
+        <div class="dr-day"><span class="dr-day-name">${d.day}</span><span class="dr-day-date">${d.date}</span></div>
+        <div class="dr-when when-pill ${whenClass(d.when)}">${d.when === 'REST' ? '–' : d.when}</div>
+        <div class="dr-type">
+          <div class="dr-type-bar bar-${t}"></div>
+          <div class="dr-type-name t-${t}" style="background:none;">${typeName(d.type)}</div>
+        </div>
+        <div class="dr-content">
+          <div class="dr-title">${d.title}</div>
+          <div class="dr-desc">${d.desc}${note ? '<br><em style="color:var(--accent);">📝 ' + note + '</em>' : ''}</div>
+        </div>
+        <div class="dr-pace">${d.workout?.total ? d.workout.total + ' mi' : ''}<br><span style="color:var(--text-faint);font-size:11px;">${d.pace !== '—' ? d.pace : ''}</span></div>
+        <div class="dr-actions">
+          <button class="dr-btn done-btn ${done ? 'is-active' : ''}" onclick="toggleComplete(${wk.week}, ${di})" title="Done">✓</button>
+          <button class="dr-btn skip-btn ${skipped ? 'is-active' : ''}" onclick="toggleSkip(${wk.week}, ${di})" title="Skip">⊘</button>
+          <button class="dr-btn" onclick="openNoteModal(${wk.week}, ${di})" title="Note">✎</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  detail.innerHTML = `
+    <div class="wd-header">
+      <div>
+        <div class="wd-title">Week ${wk.week} · ${wk.dates}</div>
+        <div class="wd-dates">${wk.focus}</div>
+      </div>
+      <div class="wd-meta">
+        <span class="wd-tag phase">${wk.phase}</span>
+        <span class="wd-tag miles">${wk.miles} mi</span>
+        <span class="wd-tag pushups">${wk.pushups} pushups/day</span>
+      </div>
+    </div>
+    <div class="day-list">${dayRows}</div>
+  `;
 }
 
-/* ===== UTILITY ===== */
-.font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.text-dim { color: var(--text-dim); }
-.text-faint { color: var(--text-faint); }
-.text-accent { color: var(--accent); }
-.muted { opacity: 0.5; }
+// ===== INTERACTIONS =====
+function toggleComplete(wk, di) {
+  const k = dayKey(wk, di);
+  if (state.done[k]) delete state.done[k]; else { state.done[k] = true; delete state.skip[k]; }
+  saveState(state);
+  renderAll();
+  showToast(state.done[k] ? '✓ Marked done' : 'Done removed', 'success');
+}
+function toggleSkip(wk, di) {
+  const k = dayKey(wk, di);
+  if (state.skip[k]) delete state.skip[k]; else { state.skip[k] = true; delete state.done[k]; }
+  saveState(state);
+  renderAll();
+  showToast(state.skip[k] ? 'Marked skipped' : 'Skip removed');
+}
+function toggleExtra(wk, di, ex) {
+  const k = dayKey(wk, di);
+  if (!state.extras[k]) state.extras[k] = {};
+  state.extras[k][ex] = !state.extras[k][ex];
+  saveState(state);
+  renderToday();
+}
+function jumpToWeek(n) {
+  viewWeek = n;
+  renderWeekNav();
+  renderWeekDetail();
+  const target = document.getElementById('week-detail');
+  if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function openNoteModal(wk, di) {
+  noteContext = { wk, di };
+  const day = PLAN[wk - 1].days[di];
+  document.getElementById('note-context').textContent = `${day.day}, ${day.date} · ${day.title}`;
+  document.getElementById('note-text').value = state.notes[dayKey(wk, di)] || '';
+  document.getElementById('note-modal').classList.add('open');
+}
+function closeNoteModal() {
+  document.getElementById('note-modal').classList.remove('open');
+  noteContext = null;
+}
+function saveNote() {
+  if (!noteContext) return;
+  const text = document.getElementById('note-text').value.trim();
+  const k = dayKey(noteContext.wk, noteContext.di);
+  if (text) state.notes[k] = text; else delete state.notes[k];
+  saveState(state);
+  closeNoteModal();
+  renderAll();
+  showToast('Note saved', 'success');
+}
+function logWeight() {
+  const inp = document.getElementById('weight-input');
+  const val = parseFloat(inp.value);
+  if (!val || val < 100 || val > 300) { showToast('Enter a valid weight', 'warn'); return; }
+  state.weights.push({ date: new Date().toISOString(), lbs: val });
+  saveState(state);
+  inp.value = '';
+  renderTopStats();
+  showToast(`Logged ${val} lbs`, 'success');
+}
+function logSleep() {
+  const inp = document.getElementById('sleep-input');
+  const val = parseFloat(inp.value);
+  if (!val || val < 1 || val > 14) { showToast('Enter hours (1–14)', 'warn'); return; }
+  state.sleep.push({ date: new Date().toISOString(), hrs: val });
+  saveState(state);
+  inp.value = '';
+  renderTopStats();
+  showToast(`Logged ${val} hrs`, 'success');
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => t.className = 'toast', 2400);
+}
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 900px) {
-  .topnav { padding: 12px 16px; }
-  .nav-stats { display: none; }
-  main { padding: 20px 16px 80px; }
-  .page-title { font-size: 28px; }
-  h1 { font-size: 26px; }
+// ===== INIT =====
+function renderAll() {
+  renderToday();
+  renderTopStats();
+  renderThisWeek();
+  renderWeekNav();
+  renderWeekDetail();
 }
-@media (max-width: 560px) {
-  .nav-tabs { width: 100%; justify-content: space-between; }
-  .nav-tab { flex: 1; padding: 7px 8px; font-size: 12px; text-align: center; }
-}
+document.addEventListener('DOMContentLoaded', () => {
+  viewWeek = getCurrentWeekDay().week;
+  renderAll();
+});
+// Modal close on background click
+document.addEventListener('click', e => {
+  if (e.target.id === 'note-modal') closeNoteModal();
+});
