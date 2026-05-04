@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race Day · MCM 2026</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.race-hero {
+  background: linear-gradient(135deg, #2a1a0e, #1c0e08);
+  border: 1px solid #3d2515;
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.race-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 600px 300px at top right, rgba(249, 115, 22, 0.15), transparent 60%);
+  pointer-events: none;
+}
+.race-hero-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 32px;
+  align-items: center;
+  position: relative;
+}
+.race-hero-content h1 {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--accent), #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.race-hero-content p {
+  font-size: 16px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.race-target {
+  text-align: center;
+  background: rgba(13, 17, 23, 0.6);
+  border-radius: 16px;
+  padding: 24px;
+}
+.race-target-time {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.race-target-pace {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-weight: 600;
+}
+.race-target-stretch {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.split-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+.split-table table { font-size: 13px; }
+.split-table td.num { color: var(--accent); }
+.split-table td.cumtime { color: var(--text); font-weight: 700; }
+.split-table tr.danger { background: rgba(239, 68, 68, 0.05); }
+
+.course-mile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.course-mile.danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), var(--card) 50%);
+}
+.course-mile-num {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.course-mile.danger .course-mile-num { color: var(--race); }
+.course-mile-num-lbl {
+  font-family: var(--font-body);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-top: 4px;
+}
+.course-section {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin-bottom: 6px;
+}
+.course-desc {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 18px;
+  padding: 14px 18px;
+  border-left: 2px solid var(--border);
+  position: relative;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -7px; top: 22px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.timeline-time {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.timeline-event {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.timeline-detail {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.gear-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.gear-card-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gear-card-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.gear-list {
+  list-style: none;
+  padding: 0;
+}
+.gear-list li {
+  font-size: 13px;
+  color: var(--text);
+  padding: 7px 0;
+  padding-left: 22px;
+  position: relative;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.gear-list li:last-child { border-bottom: none; }
+.gear-list li::before {
+  content: '☐';
+  position: absolute;
+  left: 0;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .race-hero-grid { grid-template-columns: 1fr; gap: 20px; }
+  .race-hero-content h1 { font-size: 32px; }
+  .race-target-time { font-size: 44px; }
+  .course-mile { grid-template-columns: 60px 1fr; gap: 12px; }
+  .course-mile-num { font-size: 26px; }
+  .timeline-item { grid-template-columns: 80px 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab">Today</a>
+      <a href="plan.html" class="nav-tab">Plan</a>
+      <a href="exercises.html" class="nav-tab">Strength</a>
+      <a href="nutrition.html" class="nav-tab">Fuel</a>
+      <a href="race.html" class="nav-tab active">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="race-hero">
+    <div class="race-hero-grid">
+      <div class="race-hero-content">
+        <div class="page-kicker" style="color: var(--accent);">Sunday · October 25 · 2026</div>
+        <h1>Marine Corps Marathon</h1>
+        <p>The 51st running. Howitzer goes off at 7:55 AM. 30,000 runners at the Pentagon. Iwo Jima Memorial finish.</p>
+      </div>
+      <div class="race-target">
+        <div class="race-target-time">4:08:00</div>
+        <div class="race-target-pace">9:28 / mile</div>
+        <div class="race-target-stretch">Stretch: 4:00 · 9:09/mi</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">5K split schedule · 4:08 target</h2>
+  <div class="split-table">
+    <table>
+      <thead>
+        <tr><th>Distance</th><th>Pace</th><th>5K split</th><th>Cumulative</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>5K (mi 3.1)</td><td class="num">9:35</td><td class="num">29:42</td><td class="cumtime">29:42</td><td>Slightly slow — let crowd thin</td></tr>
+        <tr><td>10K (mi 6.2)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">59:06</td><td>Lock into goal pace</td></tr>
+        <tr><td>15K (mi 9.3)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">1:28:30</td><td>Past Lincoln Memorial</td></tr>
+        <tr><td>HALF (13.1)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">2:04:02</td><td>Should match this within 30 sec</td></tr>
+        <tr><td>25K (mi 15.5)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">2:33:26</td><td>In Hains Point now — focus</td></tr>
+        <tr class="danger"><td>30K (mi 18.6)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">3:02:50</td><td><strong>Caffeine gel here</strong></td></tr>
+        <tr class="danger"><td>35K (mi 21.7)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">3:32:14</td><td>The wall zone — survive</td></tr>
+        <tr><td>40K (mi 24.9)</td><td class="num">9:28</td><td class="num">29:24</td><td class="cumtime">4:01:38</td><td>If holding pace, drop to 9:00</td></tr>
+        <tr><td><strong>FINISH (26.2)</strong></td><td class="num">9:28</td><td class="num">11:18</td><td class="cumtime"><strong>4:08:00</strong></td><td>Iwo Jima hill — climb home</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title">The negative-split rule</div>
+    <p>If you cross the half marathon mat in 2:02 or faster, you went out too hot. Slow to 9:35 for two miles. The wall is real and it kills people who bank time. Even 4:08 finishers run a slight positive split (mile 14–22 is 5–10 sec/mi slower than first half). That's fine. What is not fine is a 4-min positive split because you blew up at mile 22.</p>
+  </div>
+
+  <h2 class="section-title">The course · mile-by-mile</h2>
+  <div id="course-list"></div>
+
+  <h2 class="section-title">Race-day timeline</h2>
+  <div class="card" style="padding: 0;">
+    <div class="timeline-item">
+      <div class="timeline-time">4:30 AM</div>
+      <div>
+        <div class="timeline-event">Wake</div>
+        <div class="timeline-detail">Lights on, water immediately. No snooze. Body needs the head start.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">4:45 AM</div>
+      <div>
+        <div class="timeline-event">Coffee + race breakfast</div>
+        <div class="timeline-detail">Bagel with peanut butter and honey · banana · coffee · 16 oz water with electrolytes. ~600 cal.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">5:30 AM</div>
+      <div>
+        <div class="timeline-event">Bathroom · final kit check</div>
+        <div class="timeline-detail">Gear list below. Body Glide everything. Pin bib. Phone charged.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">5:45 AM</div>
+      <div>
+        <div class="timeline-event">Leave for Pentagon</div>
+        <div class="timeline-detail">Metro to Pentagon stop, or Uber. Allow 60 min minimum — security and crowd. Bag check opens 5:30.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">6:30 AM</div>
+      <div>
+        <div class="timeline-event">Arrive Pentagon · porta-potty line</div>
+        <div class="timeline-detail">Last bathroom is non-negotiable. Lines are 30+ minutes by 7 AM. Sip water until 7:15.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">7:30 AM</div>
+      <div>
+        <div class="timeline-event">Bag check · enter corral</div>
+        <div class="timeline-detail">Throwaway long sleeve until corral. Light jog, dynamic stretches.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">7:40 AM</div>
+      <div>
+        <div class="timeline-event">First gel + sip</div>
+        <div class="timeline-detail">15 min before gun. Don't take a caffeine gel — save those for mile 16 and 20.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">7:55 AM</div>
+      <div>
+        <div class="timeline-event">HOWITZER · Gun fires</div>
+        <div class="timeline-detail">Don't sprint the start. Crowded for 1.5 miles. First mile slower than goal pace. This is a 26-mile race, not a 100m sprint.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">11:55 AM – 12:15 PM</div>
+      <div>
+        <div class="timeline-event">Iwo Jima finish</div>
+        <div class="timeline-detail">Marine puts the medal over your head. Walk a few minutes. Eat anything offered. Find dry clothes within 30 minutes — heat loss is fast.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title" style="margin-top: 32px;">Race-day fuel plan</h2>
+  <div class="split-table">
+    <table>
+      <thead><tr><th>Mile</th><th>What</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="num">Pre-race (-15 min)</td><td>1 gel + 4 oz water</td><td>Top off liver glycogen for the start</td></tr>
+        <tr><td class="num">Mile 4</td><td>1 gel + 4 oz water</td><td>First in-race gel before glycogen window matters</td></tr>
+        <tr><td class="num">Every aid station</td><td>2–3 sips Gatorade or water</td><td>30g carbs/hr from gels + 10g/hr from sports drink. Don't overdrink.</td></tr>
+        <tr><td class="num">Mile 8</td><td>1 gel + 4 oz water</td><td>Standard 30-min interval</td></tr>
+        <tr><td class="num">Mile 12</td><td>1 gel + 4 oz water</td><td>Pre-half timing</td></tr>
+        <tr><td class="num">Mile 16</td><td><strong>1 caffeine gel</strong> + 4 oz water</td><td>Caffeine peaks 30–45 min later — exactly when wall hits</td></tr>
+        <tr><td class="num">Mile 20</td><td><strong>1 caffeine gel</strong> + 4 oz water</td><td>Final caffeine boost for the Iwo Jima climb</td></tr>
+        <tr><td class="num">Mile 23</td><td>1 gel optional</td><td>Only if stomach allows. Otherwise just water.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">Practiced fuel only</div>
+    <p>Every gel in this plan is something you've taken on long runs. Race day is not the day to try a new flavor, brand, or caffeine level. GI distress at mile 18 ends a marathon faster than the wall does.</p>
+  </div>
+
+  <h2 class="section-title" style="margin-top: 32px;">Gear checklist</h2>
+  <div class="checklist-grid">
+    <div class="gear-card">
+      <div class="gear-card-title"><div class="gear-card-icon">👟</div>On the body</div>
+      <ul class="gear-list">
+        <li>Race shoes (worn ~150 mi)</li>
+        <li>Race socks (no new pairs)</li>
+        <li>Shorts with pocket</li>
+        <li>Singlet or t-shirt (weather-checked)</li>
+        <li>Body Glide on nipples, inner thighs, armpits, feet</li>
+        <li>GPS watch — fully charged</li>
+        <li>Bib pinned to front (4 pins)</li>
+        <li>Sunglasses or hat if sunny</li>
+      </ul>
+    </div>
+    <div class="gear-card">
+      <div class="gear-card-title"><div class="gear-card-icon">🍯</div>Carry on race</div>
+      <ul class="gear-list">
+        <li>5–6 gels (2 caffeine for miles 16, 20)</li>
+        <li>Salt tabs if hot day</li>
+        <li>Phone (optional — adds weight)</li>
+        <li>ID + small cash in zip pocket</li>
+        <li>Throwaway long-sleeve until corral</li>
+      </ul>
+    </div>
+    <div class="gear-card">
+      <div class="gear-card-title"><div class="gear-card-icon">🎒</div>Bag check</div>
+      <ul class="gear-list">
+        <li>Dry clothes for after (full change)</li>
+        <li>Recovery sandals or slides</li>
+        <li>Phone charger</li>
+        <li>Recovery snack (banana, bagel)</li>
+        <li>Cash for Uber home</li>
+        <li>Light jacket</li>
+      </ul>
+    </div>
+    <div class="gear-card">
+      <div class="gear-card-title"><div class="gear-card-icon">🏠</div>Night-before prep</div>
+      <ul class="gear-list">
+        <li>Lay everything out tonight</li>
+        <li>Pin the bib to the singlet</li>
+        <li>Charge watch + phone</li>
+        <li>Set 3 alarms · 4:30 AM</li>
+        <li>Pre-fill water bottles + electrolytes</li>
+        <li>Bagel + PB + banana + coffee on counter</li>
+        <li>Check weather one last time</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section-title" style="margin-top: 32px;">Mental scripts for the dark miles</h2>
+  <div class="card">
+    <h3 style="margin-bottom: 16px;">Mile 18–22: when the body asks if you can do this</h3>
+    <p style="color: var(--text-dim); margin-bottom: 18px;">Every marathoner has a scripted answer ready. You wrote yours during the long runs. Choose three. Use them in rotation. Say them out loud if you have to.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"This is exactly what I trained for. The 18-miler with MP. I did this."</div>
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"Just to the next aid station. That's it. Don't think past the next aid station."</div>
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"My legs are heavy. So is everyone else's. Keep moving."</div>
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"This pain is information. It's not damage. I trained for this."</div>
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"Form check: shoulders down, arms relaxed, breathe deep, foot under hip."</div>
+      <div style="background: var(--bg-elev); padding: 14px 16px; border-radius: 10px; font-style: italic; color: var(--text);">"30,000 people are out here suffering with me. We chose this. I chose this."</div>
+    </div>
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script>
+const RACE_DATE = new Date('2026-10-25T07:55:00');
+const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+document.getElementById('ts-days').textContent = days;
+
+document.getElementById('course-list').innerHTML = COURSE.map(c => {
+  const isDanger = c.section.includes('DEATH') || c.section.includes('Wall') || c.section.includes('IWO');
+  return `
+    <div class="course-mile ${isDanger ? 'danger' : ''}">
+      <div>
+        <div class="course-mile-num">${c.mi}</div>
+        <div class="course-mile-num-lbl">Miles</div>
+      </div>
+      <div>
+        <div class="course-section">${c.section}</div>
+        <div class="course-desc">${c.desc}</div>
+      </div>
+    </div>
+  `;
+}).join('');
+</script>
+</body>
+</html>

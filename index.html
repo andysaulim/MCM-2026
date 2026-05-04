@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Today · MCM 2026 Training</title>
+<meta name="description" content="Daily marathon training tracker">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* Page-specific styles */
+.hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-bottom: 32px; }
+
+.today-card {
+  background: linear-gradient(135deg, var(--card), var(--bg-elev));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.today-card::before {
+  content: ''; position: absolute; top: 0; right: 0; width: 200px; height: 200px;
+  background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+  pointer-events: none;
+}
+.today-meta {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px; flex-wrap: wrap;
+  position: relative;
+}
+.today-kicker {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  font-weight: 800;
+}
+.today-date {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.today-week-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.today-type-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 7px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  position: relative;
+}
+.today-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin-bottom: 10px;
+  position: relative;
+}
+.today-desc {
+  color: var(--text-dim);
+  font-size: 15px;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+/* WORKOUT STRUCTURE */
+.workout-structure {
+  background: rgba(13, 17, 23, 0.5);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  position: relative;
+}
+.workout-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 70px;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  align-items: baseline;
+}
+.workout-row:last-of-type { border-bottom: none; }
+.workout-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.workout-detail {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.workout-miles {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.workout-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.workout-total-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.workout-total-val {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 16px;
+  position: relative;
+}
+.meta-item { display: flex; flex-direction: column; gap: 3px; }
+.meta-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.meta-val {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.today-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+/* DAILY CHECKLIST */
+.checklist {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+  position: relative;
+}
+.checklist-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.check-item:hover {
+  background: var(--card-hover);
+  border-color: var(--border);
+}
+.check-item.done { opacity: 0.55; }
+.check-item.done .check-label { text-decoration: line-through; }
+.check-box {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  display: grid; place-items: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.check-item.done .check-box {
+  background: var(--done);
+  border-color: var(--done);
+  color: #052e16;
+}
+.check-icon {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.check-content { flex: 1; }
+.check-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.check-detail {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+/* SIDEBAR */
+.stats-panel { display: grid; grid-template-rows: auto 1fr; gap: 14px; }
+
+.countdown {
+  background: linear-gradient(135deg, #2a1a0e, #1c0e08);
+  border: 1px solid #3d2515;
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.countdown::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle 200px at center top, rgba(249, 115, 22, 0.18), transparent 70%);
+  pointer-events: none;
+}
+.countdown-num {
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, var(--accent), #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  position: relative;
+  font-variant-numeric: tabular-nums;
+}
+.countdown-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  font-weight: 700;
+  margin-top: 8px;
+  position: relative;
+}
+.countdown-target {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 8px;
+  position: relative;
+  font-family: var(--font-mono);
+}
+
+.progress-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 22px;
+}
+.progress-card h3 {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.progress-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.progress-stat {
+  background: var(--bg-elev);
+  border-radius: 10px;
+  padding: 12px;
+}
+.progress-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.progress-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--bg-elev);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #fbbf24);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* WEEK STRIP */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.day-pill {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  text-decoration: none;
+  color: var(--text);
+}
+.day-pill:hover {
+  background: var(--card-hover);
+  transform: translateY(-1px);
+}
+.day-pill.is-today {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-soft), var(--card));
+}
+.day-pill.is-done::after {
+  content: '✓';
+  position: absolute;
+  top: 4px; right: 6px;
+  font-size: 10px;
+  color: var(--done);
+  font-weight: 900;
+}
+.dp-day {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.dp-date {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.dp-bar {
+  height: 3px;
+  border-radius: 2px;
+  margin: 0 auto;
+  width: 28px;
+}
+.dp-when {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* WEEK NAVIGATOR */
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.week-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  transition: all 0.15s;
+}
+.week-btn:hover {
+  color: var(--text);
+  border-color: #3a4358;
+}
+.week-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.week-btn.is-current {
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent);
+}
+.week-btn.complete::after {
+  content: '';
+  position: absolute;
+  bottom: 4px; left: 50%;
+  transform: translateX(-50%);
+  width: 16px; height: 2px;
+  background: var(--done);
+  border-radius: 1px;
+}
+.week-btn.phase-0 { border-style: dashed; }
+
+/* WEEK DETAIL */
+.week-detail {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+}
+.wd-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.wd-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.wd-dates {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.wd-focus {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 6px;
+}
+.wd-meta {
+  display: flex; gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wd-tag {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.wd-tag.phase {
+  color: var(--accent);
+  border-color: rgba(249, 115, 22, 0.3);
+  background: var(--accent-soft);
+}
+.wd-tag.miles { color: var(--text); }
+.wd-tag.pushups {
+  color: var(--tune);
+  border-color: rgba(236, 72, 153, 0.3);
+  background: var(--tune-soft);
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.day-row {
+  display: grid;
+  grid-template-columns: 65px 60px 90px 1fr 90px auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  transition: all 0.15s;
+}
+.day-row:hover { border-color: var(--border); }
+.day-row.is-today {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent-soft), var(--bg-elev) 30%);
+}
+.day-row.is-done { opacity: 0.55; }
+.day-row.is-done .dr-title {
+  text-decoration: line-through;
+}
+.dr-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dr-day-name {
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.dr-day-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.dr-when {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.dr-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dr-type-bar { width: 4px; height: 28px; border-radius: 2px; }
+.dr-type-name {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+.dr-content {}
+.dr-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.dr-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.dr-pace {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dr-actions { display: flex; gap: 6px; }
+.dr-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s;
+}
+.dr-btn:hover { background: var(--card-hover); color: var(--text); }
+.dr-btn.is-active.done-btn {
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--done);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.dr-btn.is-active.skip-btn {
+  background: rgba(110, 118, 129, 0.18);
+  color: var(--text-dim);
+  border-color: rgba(110, 118, 129, 0.4);
+}
+
+/* MODAL */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(5, 7, 14, 0.7);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  letter-spacing: -0.02em;
+}
+.modal label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* QUICK LOG STRIP */
+.quick-log {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.log-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.log-card-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.log-card-title .last-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.log-card .input-row {
+  margin-bottom: 0;
+}
+.log-card input {
+  font-family: var(--font-mono);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .day-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px;
+  }
+  .dr-day, .dr-when, .dr-type, .dr-pace {
+    display: inline-block;
+    margin-right: 12px;
+  }
+  .dr-day { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+  .dr-actions { justify-content: flex-end; margin-top: 6px; }
+  .week-strip { gap: 6px; }
+  .day-pill { padding: 8px 4px; }
+  .dp-date { font-size: 14px; }
+  .week-btn { width: 38px; height: 38px; font-size: 13px; }
+  .countdown-num { font-size: 50px; }
+  .today-title { font-size: 24px; }
+  .quick-log { grid-template-columns: 1fr; }
+  .workout-row { grid-template-columns: 80px 1fr 60px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab active">Today</a>
+      <a href="plan.html" class="nav-tab">Plan</a>
+      <a href="exercises.html" class="nav-tab">Strength</a>
+      <a href="nutrition.html" class="nav-tab">Fuel</a>
+      <a href="race.html" class="nav-tab">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-miles">—</span><span class="nav-stat-lbl">Miles</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="today-card" id="today-card"></div>
+    <div class="stats-panel">
+      <div class="countdown">
+        <div class="countdown-num" id="cd-days">—</div>
+        <div class="countdown-lbl">Days to race day</div>
+        <div class="countdown-target">Sun · Oct 25 · 7:55am</div>
+      </div>
+      <div class="progress-card">
+        <h3>Progress</h3>
+        <div class="progress-grid">
+          <div class="progress-stat">
+            <div class="progress-num" id="ps-completion">0%</div>
+            <div class="progress-lbl">Workouts done</div>
+          </div>
+          <div class="progress-stat">
+            <div class="progress-num" id="ps-miles">0</div>
+            <div class="progress-lbl">Miles run</div>
+          </div>
+          <div class="progress-stat">
+            <div class="progress-num" id="ps-weight">—</div>
+            <div class="progress-lbl">Lbs lost</div>
+          </div>
+          <div class="progress-stat">
+            <div class="progress-num" id="ps-sleep">—</div>
+            <div class="progress-lbl">Avg sleep (7d)</div>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-bar-fill" id="ps-bar" style="width: 0%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">
+      <span>This week</span>
+      <span class="section-title-rt" id="thisweek-label"></span>
+    </h2>
+    <div class="week-strip" id="week-strip"></div>
+  </section>
+
+  <section class="quick-log">
+    <div class="log-card">
+      <div class="log-card-title">
+        <span>Log weight</span>
+        <span class="last-val" id="last-weight"></span>
+      </div>
+      <div class="input-row">
+        <input type="number" id="weight-input" placeholder="190.0" step="0.1" />
+        <button class="btn btn-primary" onclick="logWeight()">Log</button>
+      </div>
+    </div>
+    <div class="log-card">
+      <div class="log-card-title">
+        <span>Log sleep</span>
+        <span class="last-val" id="last-sleep"></span>
+      </div>
+      <div class="input-row">
+        <input type="number" id="sleep-input" placeholder="6.5 hrs" step="0.1" />
+        <button class="btn btn-primary" onclick="logSleep()">Log</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">All 25 weeks · dashed = base rebuild</h2>
+    <div class="week-nav" id="week-nav"></div>
+  </section>
+
+  <section class="week-detail" id="week-detail"></section>
+</main>
+
+<div class="modal-bg" id="note-modal">
+  <div class="modal">
+    <h2>Add note</h2>
+    <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 14px;" id="note-context"></p>
+    <label>Note</label>
+    <textarea id="note-text" rows="4" placeholder="How did it go? Pain? Swap? Adjustment?"></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save note</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

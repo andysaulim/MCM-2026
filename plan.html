@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan · MCM 2026 Training</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.mileage-chart {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px 24px 24px;
+  margin-bottom: 32px;
+  position: relative;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.chart-summary {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.chart-bars {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 4px;
+  height: 160px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+.chart-bar {
+  background: linear-gradient(180deg, var(--accent), #fb923c);
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.chart-bar:hover { opacity: 0.8; }
+.chart-bar.phase-0 {
+  background: linear-gradient(180deg, var(--strength), #818cf8);
+}
+.chart-bar.taper {
+  background: linear-gradient(180deg, var(--easy), #4ade80);
+}
+.chart-bar.race {
+  background: linear-gradient(180deg, var(--race), #f87171);
+}
+.chart-bar.cutback {
+  background: linear-gradient(180deg, var(--rest), #94a3b8);
+}
+.chart-bar.peak {
+  background: linear-gradient(180deg, var(--accent), #fb923c);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+}
+.chart-bar-label {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.chart-bar:hover .chart-bar-label,
+.chart-bar.peak .chart-bar-label { opacity: 1; }
+.chart-axis {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 4px;
+}
+.chart-axis-tick {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  text-align: center;
+  font-weight: 600;
+}
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+
+.phase-section {
+  margin-bottom: 40px;
+}
+.phase-header {
+  margin-bottom: 16px;
+}
+.phase-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.phase-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.phase-desc {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.week-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.week-card.is-current {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent-soft), var(--card) 30%);
+}
+.wc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.wc-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.wc-current-tag {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 800;
+  margin-left: 8px;
+}
+.wc-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); display: flex; gap: 10px; }
+.wc-focus { font-size: 12px; color: var(--text-dim); font-style: italic; margin-bottom: 14px; }
+.wc-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.wc-day {
+  background: var(--bg-elev);
+  border-radius: 8px;
+  padding: 10px 8px;
+  border: 1px solid var(--border-soft);
+}
+.wc-day-name {
+  font-family: var(--font-body);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.wc-day-bar { height: 3px; border-radius: 2px; margin-bottom: 8px; }
+.wc-day-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.wc-day-miles {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .wc-days { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .wc-day { padding: 6px 4px; }
+  .wc-day-title { font-size: 10px; }
+  .wc-day-miles { font-size: 10px; }
+  .chart-bars { height: 100px; }
+  .chart-axis-tick { font-size: 8px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab">Today</a>
+      <a href="plan.html" class="nav-tab active">Plan</a>
+      <a href="exercises.html" class="nav-tab">Strength</a>
+      <a href="nutrition.html" class="nav-tab">Fuel</a>
+      <a href="race.html" class="nav-tab">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="page-header">
+    <div class="page-kicker">May 4 → October 25 · 25 weeks</div>
+    <h1 class="page-title">The full plan</h1>
+    <p class="page-subtitle">Three weeks rebuilding base, then 22 weeks structured. Long run climbs from 5 mi to 18 mi, peaks at 36 mpw in week 19, drops to a tune-up half on Sep 20, then a three-week taper into race day.</p>
+  </div>
+
+  <div class="mileage-chart">
+    <div class="chart-header">
+      <div class="chart-title">Weekly mileage arc</div>
+      <div class="chart-summary" id="chart-summary">— total miles · peak — mpw</div>
+    </div>
+    <div class="chart-bars" id="chart-bars"></div>
+    <div class="chart-axis" id="chart-axis"></div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--strength);"></div>Phase 0 base rebuild</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div>Build week</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent); box-shadow: 0 0 8px rgba(249, 115, 22, 0.4);"></div>Peak</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--rest);"></div>Cutback</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--easy);"></div>Taper</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--race);"></div>Race week</div>
+    </div>
+  </div>
+
+  <div id="phases"></div>
+</main>
+
+<script src="js/data.js"></script>
+<script>
+const START_DATE = new Date('2026-05-04T00:00:00');
+const RACE_DATE = new Date('2026-10-25T07:55:00');
+const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+document.getElementById('ts-days').textContent = days;
+
+function getCurrentWeek() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(START_DATE); start.setHours(0,0,0,0);
+  const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 0;
+  if (diffDays >= 175) return 26;
+  return Math.floor(diffDays / 7) + 1;
+}
+const currentWeek = getCurrentWeek();
+
+// Mileage chart
+const maxMiles = Math.max(...PLAN.map(w => w.miles));
+document.getElementById('chart-bars').innerHTML = PLAN.map(wk => {
+  const h = Math.max(4, (wk.miles / maxMiles) * 160);
+  let cls = '';
+  if (wk.week <= 3) cls = 'phase-0';
+  else if (wk.week === 25) cls = 'race';
+  else if (wk.week >= 22) cls = 'taper';
+  else if (wk.phase.includes('CUTBACK')) cls = 'cutback';
+  else if (wk.miles === maxMiles) cls = 'peak';
+  return `<div class="chart-bar ${cls}" style="height: ${h}px" title="Week ${wk.week}: ${wk.miles} mi"><div class="chart-bar-label">${wk.miles}</div></div>`;
+}).join('');
+document.getElementById('chart-axis').innerHTML = PLAN.map(wk => `<div class="chart-axis-tick">${wk.week}</div>`).join('');
+const totalMiles = PLAN.reduce((s, w) => s + w.miles, 0);
+document.getElementById('chart-summary').textContent = `${Math.round(totalMiles)} total miles · peak ${maxMiles} mpw (Week ${PLAN.find(w => w.miles === maxMiles).week})`;
+
+// Phase grouping
+const phaseGroups = [
+  { name: 'Phase 0 — Base Rebuild', desc: 'Coming back from a 5-month layoff. Run/walk first, then continuous easy. Three weeks before any structured demand begins.', weeks: [1, 2, 3] },
+  { name: 'Phase 1 — Base + Cut', desc: 'Real plan begins. First tempo work, calorie deficit starts. Build the engine and shed the easy weight.', weeks: [4, 5, 6, 7, 8, 9] },
+  { name: 'Phase 2 — Build', desc: 'Add intervals, lengthen tempos, first marathon-pace work in long runs. Long run reaches 15 mi.', weeks: [10, 11, 12, 13, 14, 15] },
+  { name: 'Phase 3 — Peak + Maintain', desc: 'Cut ends. Eat to recover. Biggest workouts of the cycle: 18-mi long run, mile-rep intervals, DC Half tune-up on Sep 20.', weeks: [16, 17, 18, 19, 20, 21] },
+  { name: 'Phase 4 — Taper', desc: 'Volume drops 25 → 50 → 65%. Intensity stays. Sharpen, rest, carb-load. The hard work is already done.', weeks: [22, 23, 24] },
+  { name: 'Race Week', desc: 'Hydration ramp, carb load, mental rehearsal. Howitzer at 7:55 AM Sunday October 25.', weeks: [25] },
+];
+
+document.getElementById('phases').innerHTML = phaseGroups.map(group => {
+  const weeksHTML = group.weeks.map(n => {
+    const wk = PLAN[n - 1];
+    const isCurrent = wk.week === currentWeek;
+    const daysHTML = wk.days.map(d => {
+      const t = ({ easy:'easy', quality:'quality', long:'long', strength:'strength', rest:'rest', tune:'tune', race:'race' })[d.type] || 'easy';
+      return `
+        <div class="wc-day">
+          <div class="wc-day-name">${d.day}</div>
+          <div class="wc-day-bar bar-${t}"></div>
+          <div class="wc-day-title">${d.title.replace(/^(LONG · |TEMPO · |INTERVALS · |TUNE-UP HALF · |MARINE CORPS MARATHON · )/, '')}</div>
+          <div class="wc-day-miles">${d.workout?.total ? d.workout.total + ' mi' : '—'}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="week-card ${isCurrent ? 'is-current' : ''}">
+        <div class="wc-header">
+          <div>
+            <span class="wc-title">Week ${wk.week} · ${wk.dates}</span>
+            ${isCurrent ? '<span class="wc-current-tag">● Current</span>' : ''}
+          </div>
+          <div class="wc-meta">
+            <span>${wk.miles} mi</span>
+            <span>·</span>
+            <span>${wk.pushups} pushups/day</span>
+          </div>
+        </div>
+        <div class="wc-focus">${wk.focus}</div>
+        <div class="wc-days">${daysHTML}</div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="phase-section">
+      <div class="phase-header">
+        <div class="phase-name">${group.name} <span class="phase-meta">Wk ${group.weeks[0]}–${group.weeks[group.weeks.length-1]}</span></div>
+        <div class="phase-desc">${group.desc}</div>
+      </div>
+      ${weeksHTML}
+    </div>
+  `;
+}).join('');
+</script>
+</body>
+</html>

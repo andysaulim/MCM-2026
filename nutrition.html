@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel · MCM 2026 Training</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.phase-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.phase-card-name {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.phase-card-cal {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.phase-card-cal-unit {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.phase-card-meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+}
+
+.smoothie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-bottom: 48px;
+}
+.smoothie-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.sm-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.sm-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.sm-when {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sm-macros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sm-macro {
+  background: var(--bg-elev);
+  padding: 10px 8px;
+  border-radius: 8px;
+  text-align: center;
+}
+.sm-macro-num {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.sm-macro-lbl {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.sm-section-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.sm-ingredients {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 16px;
+}
+.sm-ingredients li {
+  font-size: 13px;
+  color: var(--text);
+  padding: 5px 0;
+  padding-left: 18px;
+  position: relative;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.sm-ingredients li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+.sm-ingredients li:last-child { border-bottom: none; }
+.sm-why {
+  background: var(--bg-elev);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-top: auto;
+}
+
+.food-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 48px;
+}
+.food-col {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.food-col.good { border-top: 3px solid var(--easy); }
+.food-col.limit { border-top: 3px solid var(--race); }
+.food-col-header {
+  padding: 18px 20px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border-soft);
+}
+.food-col-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.food-col.good .food-col-title { color: var(--easy); }
+.food-col.limit .food-col-title { color: var(--race); }
+.food-list { padding: 8px 0; }
+.food-item {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.food-item:last-child { border-bottom: none; }
+.food-dish {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.food-why {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.protein-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.protein-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.protein-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.protein-stat {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.protein-note {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .food-cols { grid-template-columns: 1fr; }
+  .smoothie-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab">Today</a>
+      <a href="plan.html" class="nav-tab">Plan</a>
+      <a href="exercises.html" class="nav-tab">Strength</a>
+      <a href="nutrition.html" class="nav-tab active">Fuel</a>
+      <a href="race.html" class="nav-tab">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="page-header">
+    <div class="page-kicker">Vegetarian · 190 → 173 lbs</div>
+    <h1 class="page-title">Fuel for 25 weeks</h1>
+    <p class="page-subtitle">Calorie targets shift by phase. Cut now while volume is moderate; eat to maintain when peak miles arrive; carb-load race week. Five smoothies handle most needs. Restaurant choices matter on Chinese kitchen nights.</p>
+  </div>
+
+  <h2 class="section-title">Calorie targets by phase</h2>
+  <div class="phase-grid">
+    <div class="phase-card">
+      <div class="phase-card-name">Phase 0 (Wk 1–3)</div>
+      <div><span class="phase-card-cal">2,300</span><span class="phase-card-cal-unit"> /day</span></div>
+      <div class="phase-card-meta">Maintenance — body adapts to running before deficit begins.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-card-name">Cut (Wk 4–14)</div>
+      <div><span class="phase-card-cal">2,100</span><span class="phase-card-cal-unit"> /day</span></div>
+      <div class="phase-card-meta">≈500-cal deficit. Targets ~1.5 lbs/week loss. 140g protein floor.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-card-name">Maintain (Wk 15–21)</div>
+      <div><span class="phase-card-cal">2,900</span><span class="phase-card-cal-unit"> /day</span></div>
+      <div class="phase-card-meta">Peak training miles. Eat to recover. Cut ends Aug 17.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-card-name">Carb load (Wk 22–25)</div>
+      <div><span class="phase-card-cal">3,000</span><span class="phase-card-cal-unit"> /day</span></div>
+      <div class="phase-card-meta">Carb % climbs from 50% → 65%. Up to 500g carbs race week.</div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title">Critical: cut ends Aug 17</div>
+    <p>You cannot cut calories during peak training. Body needs full fuel for 18-mile runs and threshold work. If you haven't lost the weight by Aug 17, accept the weight you're at and switch to maintenance. Holding the line is more important than dropping more pounds at the cost of a successful race.</p>
+  </div>
+
+  <h2 class="section-title">
+    <span>Five smoothies that cover most needs</span>
+    <span class="section-title-rt">Vitamix-class blender · 5–8 min prep</span>
+  </h2>
+  <div class="smoothie-grid" id="smoothie-grid"></div>
+
+  <h2 class="section-title">
+    <span>Vegetarian protein sources</span>
+    <span class="section-title-rt">Hit 140g protein/day during cut, 160g during peak</span>
+  </h2>
+  <div class="protein-grid">
+    <div class="protein-card"><div class="protein-name">Greek yogurt (2%)</div><div class="protein-stat">17g protein / cup · 150 cal</div><div class="protein-note">Cheapest highest-protein vegetarian breakfast. Add berries and oats.</div></div>
+    <div class="protein-card"><div class="protein-name">Cottage cheese</div><div class="protein-stat">25g protein / cup · 200 cal</div><div class="protein-note">Highest protein density of any cheese. Pair with fruit or eggs.</div></div>
+    <div class="protein-card"><div class="protein-name">Eggs</div><div class="protein-stat">6g protein / egg · 70 cal</div><div class="protein-note">3-egg scramble is 18g protein in 3 minutes.</div></div>
+    <div class="protein-card"><div class="protein-name">Tofu (firm)</div><div class="protein-stat">20g protein / cup · 180 cal</div><div class="protein-note">Pan-fry cubes with soy and sesame. Fast restaurant alternative.</div></div>
+    <div class="protein-card"><div class="protein-name">Tempeh</div><div class="protein-stat">31g protein / cup · 320 cal</div><div class="protein-note">Highest plant protein density. Marinate and pan-fry.</div></div>
+    <div class="protein-card"><div class="protein-name">Lentils (cooked)</div><div class="protein-stat">18g protein / cup · 230 cal</div><div class="protein-note">Cook a pot Sunday. Adds 18g to any bowl all week.</div></div>
+    <div class="protein-card"><div class="protein-name">Black beans</div><div class="protein-stat">15g protein / cup · 220 cal</div><div class="protein-note">Cheap, fast, complementary protein with rice.</div></div>
+    <div class="protein-card"><div class="protein-name">Whey or pea protein</div><div class="protein-stat">25g protein / scoop · 120 cal</div><div class="protein-note">Smoothie base. Two scoops daily covers ~50g.</div></div>
+  </div>
+
+  <h2 class="section-title">
+    <span>Chinese restaurant — what to eat, what to skip</span>
+    <span class="section-title-rt">5 nights/week from kitchen perks</span>
+  </h2>
+  <div class="food-cols">
+    <div class="food-col good">
+      <div class="food-col-header">
+        <div class="food-col-title">✓ Eat freely</div>
+      </div>
+      <div class="food-list" id="good-food"></div>
+    </div>
+    <div class="food-col limit">
+      <div class="food-col-header">
+        <div class="food-col-title">✗ Limit or skip</div>
+      </div>
+      <div class="food-list" id="limit-food"></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Hydration · tea · coffee</h2>
+  <div class="card" style="margin-bottom: 32px;">
+    <table>
+      <thead><tr><th>What</th><th>Daily target</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Water</td><td class="num">100 oz</td><td>Baseline. More on training days, more in summer heat from kitchen work.</td></tr>
+        <tr><td>Electrolytes</td><td class="num">1–2 packets</td><td>Sweating in restaurant + running both deplete sodium. LMNT, Liquid IV, or DIY (½ tsp salt + ½ tsp lemon in water).</td></tr>
+        <tr><td>Green tea</td><td class="num">2–3 cups</td><td>Antioxidants, light caffeine. EGCG supports endurance adaptation.</td></tr>
+        <tr><td>Coffee</td><td class="num">1–2 cups, before 2 PM</td><td>Performance benefit unquestionable. Cut off by 2 PM to protect sleep.</td></tr>
+        <tr><td>Tart cherry juice</td><td class="num">8 oz evening</td><td>Clinical evidence for reduced muscle soreness and improved sleep onset on hard training days.</td></tr>
+        <tr><td>Pu-erh tea</td><td class="num">With dinner</td><td>Aids fat digestion, traditional with rich Chinese food. Drink it at the restaurant.</td></tr>
+        <tr><td>Ginger tea</td><td class="num">After long runs</td><td>Settles GI distress from gels. Brew fresh sliced ginger 5 min.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section-title">Supplements — what's worth taking, what's not</h2>
+  <div class="card" style="margin-bottom: 32px;">
+    <p style="color: var(--text-dim); margin-bottom: 16px;">Vegetarian endurance athletes have specific shortfalls. Address these directly. Most other supplements are noise.</p>
+    <table>
+      <thead><tr><th>Supplement</th><th>Daily dose</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>B12</strong></td><td class="num">500 mcg</td><td>Vegetarians are at risk of deficiency. Critical for red blood cells (oxygen transport for endurance).</td></tr>
+        <tr><td><strong>Iron</strong></td><td class="num">18 mg (with vit C)</td><td>Endurance training depletes iron. Vegetarian non-heme iron is poorly absorbed. Take with citrus or vitamin C, not with coffee or tea.</td></tr>
+        <tr><td><strong>Vitamin D3</strong></td><td class="num">2,000 IU</td><td>Bone health, immune function. Deficiency common in office workers regardless of diet.</td></tr>
+        <tr><td><strong>Magnesium glycinate</strong></td><td class="num">300–400 mg before bed</td><td>Sleep quality, muscle relaxation. Glycinate form is best absorbed and doesn't cause GI distress like other forms.</td></tr>
+        <tr><td><strong>Creatine monohydrate</strong></td><td class="num">5g</td><td>Surprisingly useful for endurance — strength maintenance during high-volume training. Vegetarians benefit most because diet provides ~zero creatine.</td></tr>
+        <tr><td>Whey/pea protein</td><td class="num">1–2 scoops</td><td>Hits 140g protein target. Not technically a supplement; it's just convenient food.</td></tr>
+        <tr><td>Omega-3 (algae or fish oil)</td><td class="num">1–2g EPA/DHA</td><td>Anti-inflammatory. Vegetarians who don't eat fish should use algae-based.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-top: 20px;">
+      <div class="callout-title">Skip these</div>
+      <p>Pre-workouts, BCAAs, glutamine, ZMA, "fat burners," beta-alanine pills, testosterone boosters, "endurance blends." None have evidence justifying the cost. The marketing is louder than the science.</p>
+    </div>
+  </div>
+
+  <h2 class="section-title">Race-week food protocol</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Day</th><th>Focus</th><th>Avoid</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Mon Oct 19</strong></td><td>Hydration ramp begins. 100 oz/day.</td><td>Alcohol from this day forward.</td></tr>
+        <tr><td><strong>Tue Oct 20</strong></td><td>Normal eating. Continue hydrating.</td><td>—</td></tr>
+        <tr><td><strong>Wed Oct 21</strong></td><td>Begin moderate carb-load. <strong>Cut kimchi, spicy, raw vegetables from today.</strong></td><td>Fermented foods, spicy, fiber-heavy raw veg.</td></tr>
+        <tr><td><strong>Thu Oct 22</strong></td><td>~65% carbs. Pasta, rice, oats, bread, fruits.</td><td>New foods. New supplements. New restaurants.</td></tr>
+        <tr><td><strong>Fri Oct 23</strong></td><td>Aggressive carb-load. Up to 500g carbs. Smaller meals, more often.</td><td>Heavy fats, fried foods, dairy if any sensitivity.</td></tr>
+        <tr><td><strong>Sat Oct 24</strong></td><td>Final carb meal by 7 PM. White rice, plain pasta, white bread. Bed by 9 PM.</td><td>Anything new. Late dinner. Caffeine after noon.</td></tr>
+        <tr><td><strong>Sun Oct 25 — RACE DAY</strong></td><td>Wake 4:30 AM. Coffee + bagel + banana + honey by 5 AM. Sip water + electrolytes until 6:30 AM. Last gel 15 min before start.</td><td>Coffee after 6 AM. Anything fibrous. Anything new.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script>
+const RACE_DATE = new Date('2026-10-25T07:55:00');
+const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+document.getElementById('ts-days').textContent = days;
+
+document.getElementById('smoothie-grid').innerHTML = SMOOTHIES.map(s => `
+  <div class="smoothie-card">
+    <div class="sm-header">
+      <div class="sm-name">${s.name}</div>
+      <div class="sm-when">${s.when}</div>
+    </div>
+    <div class="sm-macros">
+      <div class="sm-macro"><div class="sm-macro-num">${s.cal}</div><div class="sm-macro-lbl">Cal</div></div>
+      <div class="sm-macro"><div class="sm-macro-num">${s.protein}g</div><div class="sm-macro-lbl">Protein</div></div>
+      <div class="sm-macro"><div class="sm-macro-num">${s.carbs}g</div><div class="sm-macro-lbl">Carbs</div></div>
+      <div class="sm-macro"><div class="sm-macro-num">${s.fat}g</div><div class="sm-macro-lbl">Fat</div></div>
+    </div>
+    <div class="sm-section-title">Ingredients</div>
+    <ul class="sm-ingredients">
+      ${s.ingredients.map(i => `<li>${i}</li>`).join('')}
+    </ul>
+    <div class="sm-why"><strong>Why:</strong> ${s.why}</div>
+  </div>
+`).join('');
+
+document.getElementById('good-food').innerHTML = RESTAURANT.goodOptions.map(f => `
+  <div class="food-item">
+    <div class="food-dish">${f.dish}</div>
+    <div class="food-why">${f.why}</div>
+  </div>
+`).join('');
+
+document.getElementById('limit-food').innerHTML = RESTAURANT.limitOptions.map(f => `
+  <div class="food-item">
+    <div class="food-dish">${f.dish}</div>
+    <div class="food-why">${f.why}</div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>

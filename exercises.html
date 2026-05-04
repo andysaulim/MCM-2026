@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strength · MCM 2026 Training</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.day-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.day-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.day-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.day-card-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.day-card-icon.strength { background: var(--strength-soft); color: var(--strength); }
+.day-card-icon.circuit { background: var(--easy-soft); color: var(--easy); }
+.day-card-icon.bands { background: var(--quality-soft); color: var(--quality); }
+.day-card-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.day-card-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.day-card-when {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.exercise-section {
+  margin-bottom: 48px;
+}
+.exercise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 18px;
+}
+.ex-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ex-thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: var(--bg-elev);
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-soft);
+}
+.ex-thumb img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: brightness(0.85);
+  transition: filter 0.2s;
+}
+.ex-thumb:hover img { filter: brightness(1); }
+.ex-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.5));
+  pointer-events: none;
+}
+.ex-play {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.95);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: #1a0a00;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+}
+.ex-thumb-label {
+  position: absolute;
+  bottom: 8px; left: 12px;
+  background: rgba(13, 17, 23, 0.85);
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+.ex-body {
+  padding: 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.ex-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.ex-meta-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ex-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+}
+.ex-tag.sets { color: var(--accent); border-color: rgba(249, 115, 22, 0.3); }
+.ex-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-bottom: 14px;
+  flex: 1;
+}
+.ex-cues {
+  background: var(--bg-elev);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: auto;
+}
+.ex-cues-title {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.ex-cues ul {
+  list-style: none;
+  padding: 0;
+}
+.ex-cues li {
+  font-size: 12px;
+  color: var(--text);
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.4;
+}
+.ex-cues li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.progression-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 48px;
+}
+.progression-table table { font-size: 13px; }
+.progression-table th { background: var(--bg-elev); }
+.progression-table td.num { color: var(--accent); }
+
+@media (max-width: 700px) {
+  .day-summary { grid-template-columns: 1fr; }
+  .exercise-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab">Today</a>
+      <a href="plan.html" class="nav-tab">Plan</a>
+      <a href="exercises.html" class="nav-tab active">Strength</a>
+      <a href="nutrition.html" class="nav-tab">Fuel</a>
+      <a href="race.html" class="nav-tab">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="page-header">
+    <div class="page-kicker">Strength · Circuit · Bands</div>
+    <h1 class="page-title">The strength program</h1>
+    <p class="page-subtitle">8 main lifts on Thursday. 5-move circuit on most days. 5 band exercises Mon and Thu. Click any exercise for the form video.</p>
+  </div>
+
+  <h2 class="section-title">Weekly schedule</h2>
+  <div class="day-summary">
+    <div class="day-card">
+      <div class="day-card-header">
+        <div class="day-card-icon strength">🏋️</div>
+        <div>
+          <div class="day-card-title">Strength A</div>
+          <div class="day-card-meta">THU AM · 30–35 min</div>
+        </div>
+      </div>
+      <div class="day-card-when">Full lift session — squats, deadlifts, presses. Build through cycle, drop weight in taper. Done before strength on the same day as a circuit and bands.</div>
+    </div>
+    <div class="day-card">
+      <div class="day-card-header">
+        <div class="day-card-icon circuit">🔄</div>
+        <div>
+          <div class="day-card-title">Core + Lower Circuit</div>
+          <div class="day-card-meta">MON · TUE · THU · SAT · SUN · 8–10 min</div>
+        </div>
+      </div>
+      <div class="day-card-when">Bodyweight work that maintains hip stability, glute activation, and a strong core. The most consistent thing in your week — 5 days out of 7.</div>
+    </div>
+    <div class="day-card">
+      <div class="day-card-header">
+        <div class="day-card-icon bands">🎗</div>
+        <div>
+          <div class="day-card-title">Resistance Bands</div>
+          <div class="day-card-meta">MON · THU · 7 min</div>
+        </div>
+      </div>
+      <div class="day-card-when">Hip and glute activation work. Critical for runners — addresses the deep stabilizers that prevent IT band, knee, and hip issues. Quick and dirty.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">How to use this page</div>
+    <p>Each exercise card shows what to do, how many sets and reps, what equipment, why it matters for marathon running, and three to four critical form cues. Tap the play button to watch the demo video on YouTube — these are vetted, high-quality demos from coaches you can trust.</p>
+  </div>
+
+  <section class="exercise-section">
+    <h2 class="section-title">
+      <span>Main strength lifts (Thursday)</span>
+      <span class="section-title-rt">8 exercises · 30–35 min</span>
+    </h2>
+    <div class="exercise-grid" id="strength-grid"></div>
+  </section>
+
+  <section class="exercise-section">
+    <h2 class="section-title">
+      <span>Strength progression by phase</span>
+      <span class="section-title-rt">Volume + intensity scaled to training load</span>
+    </h2>
+    <div class="progression-table">
+      <table>
+        <thead><tr><th>Phase</th><th>Weeks</th><th>Sets × Reps</th><th>Load</th><th>Goal</th></tr></thead>
+        <tbody>
+          <tr><td>Phase 0 — Base rebuild</td><td class="num">1–3</td><td>2 × 8</td><td>Light (50% of expected work)</td><td>Form, no soreness</td></tr>
+          <tr><td>Phase 1 — Base + cut</td><td class="num">4–9</td><td>3 × 6</td><td>Moderate, +5 lb every 2 wks</td><td>Build base strength</td></tr>
+          <tr><td>Phase 2 — Build</td><td class="num">10–15</td><td>3 × 6</td><td>Heavier, push compound lifts</td><td>Peak strength</td></tr>
+          <tr><td>Phase 3 — Peak</td><td class="num">16–21</td><td>2 × 6 + circuit</td><td>Hold weight, reduce volume</td><td>Maintain, don't fatigue</td></tr>
+          <tr><td>Phase 4 — Taper</td><td class="num">22–24</td><td>2 × 5 light</td><td>Drop 30–40% load</td><td>Movement quality only</td></tr>
+          <tr><td>Race week</td><td class="num">25</td><td>None</td><td>—</td><td>Mobility and bands only</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="exercise-section">
+    <h2 class="section-title">
+      <span>Core + lower circuit</span>
+      <span class="section-title-rt">5 exercises · 8–10 min · 5 days/week</span>
+    </h2>
+    <div class="exercise-grid" id="circuit-grid"></div>
+  </section>
+
+  <section class="exercise-section">
+    <h2 class="section-title">
+      <span>Resistance bands</span>
+      <span class="section-title-rt">5 exercises · 7 min · Mon + Thu</span>
+    </h2>
+    <div class="exercise-grid" id="bands-grid"></div>
+  </section>
+
+  <section class="exercise-section">
+    <h2 class="section-title">
+      <span>Greasing the groove — pushups</span>
+      <span class="section-title-rt">Daily, throughout the day</span>
+    </h2>
+    <div class="card">
+      <h3 style="margin-bottom: 12px;">Distributed pushup protocol</h3>
+      <p style="color: var(--text-dim); margin-bottom: 16px;">Pavel Tsatsouline's "greasing the groove" approach: instead of one max-effort set, spread small sets across the day. Builds capacity without fatigue. Drop and do 5–10 pushups every couple of hours — between meetings, before coffee, before and after the bathroom. Never strain. Keep it well below failure.</p>
+      <table>
+        <thead><tr><th>Phase</th><th>Daily total</th><th>Sets per day</th><th>Reps per set</th></tr></thead>
+        <tbody>
+          <tr><td>Phase 0 (Wk 1–3)</td><td class="num">40</td><td class="num">8</td><td class="num">5</td></tr>
+          <tr><td>Phase 1 (Wk 4–9)</td><td class="num">50</td><td class="num">10</td><td class="num">5</td></tr>
+          <tr><td>Phase 2 (Wk 10–15)</td><td class="num">60</td><td class="num">10</td><td class="num">6</td></tr>
+          <tr><td>Phase 3 (Wk 16–21)</td><td class="num">70</td><td class="num">10</td><td class="num">7</td></tr>
+          <tr><td>Taper (Wk 22–24)</td><td class="num">40–50</td><td class="num">8–10</td><td class="num">5</td></tr>
+          <tr><td>Race week (Wk 25)</td><td class="num">30</td><td class="num">6</td><td class="num">5</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top: 20px;">
+        <div class="callout-title">Why pushups matter for running</div>
+        <p>Upper-body endurance shows up at mile 22+ when the arms get heavy and posture collapses. Strong chest, shoulders, and core hold posture longer. A collapsed thorax restricts breathing — exactly what you don't need at mile 24.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/data.js"></script>
+<script>
+const RACE_DATE = new Date('2026-10-25T07:55:00');
+const today = new Date();
+const days = Math.max(0, Math.floor((RACE_DATE - today) / (1000 * 60 * 60 * 24)));
+document.getElementById('ts-days').textContent = days;
+
+function ytId(url) {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+function exCard(ex) {
+  const id = ytId(ex.videoUrl);
+  const thumb = id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+  const cuesHTML = ex.formCues ? `
+    <div class="ex-cues">
+      <div class="ex-cues-title">Form cues</div>
+      <ul>${ex.formCues.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>
+  ` : '';
+  return `
+    <div class="ex-card">
+      <a class="ex-thumb" href="${ex.videoUrl}" target="_blank" rel="noopener" title="Watch ${ex.videoLabel || 'demo'}">
+        ${thumb ? `<img src="${thumb}" alt="${ex.name} demo" loading="lazy">` : ''}
+        <div class="ex-thumb-overlay"><div class="ex-play">▶</div></div>
+        ${ex.videoLabel ? `<div class="ex-thumb-label">${ex.videoLabel}</div>` : ''}
+      </a>
+      <div class="ex-body">
+        <div class="ex-name">${ex.name}</div>
+        <div class="ex-meta-row">
+          <span class="ex-tag sets">${ex.sets}</span>
+          ${ex.equipment ? `<span class="ex-tag">${ex.equipment}</span>` : ''}
+        </div>
+        <div class="ex-desc">${ex.description}</div>
+        ${cuesHTML}
+      </div>
+    </div>
+  `;
+}
+document.getElementById('strength-grid').innerHTML = EXERCISES.strength.map(exCard).join('');
+document.getElementById('circuit-grid').innerHTML = EXERCISES.circuit.map(exCard).join('');
+document.getElementById('bands-grid').innerHTML = EXERCISES.bands.map(exCard).join('');
+</script>
+</body>
+</html>
