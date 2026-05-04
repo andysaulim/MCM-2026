@@ -12,8 +12,8 @@ const MCM_CONFIG = {
     scopes: ['weight', 'sleep', 'profile'],
   },
   strava: {
-    clientId: '235130',
-    workerUrl: 'https://mcm-2026.andysaulim.workers.dev',
+    clientId: '',                                          // intentionally disabled — see Settings render below
+    workerUrl: '',
     scopes: ['read', 'activity:read'],
   },
 };
@@ -87,50 +87,13 @@ function renderSettings() {
     return last.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
   })();
 
-  const fb = mcmState.integrations.fitbit;
-  const sv = mcmState.integrations.strava;
+  // Integrations section intentionally hidden — Pixel Watch + Fitbit Web
+  // API deprecation made auto-sync infeasible, and Strava's OAuth Worker
+  // cost more setup than it saved. Manual logging via the Today page
+  // works well. The OAuth code below stays in place if anyone ever wants
+  // to re-enable it.
 
   body.innerHTML = `
-    <section class="settings-section">
-      <h3 class="settings-h">Integrations</h3>
-
-      <div class="integ-row">
-        <div class="integ-info">
-          <div class="integ-name">Fitbit</div>
-          <div class="integ-detail">${fb.connected
-            ? `Connected · last sync ${fb.lastSyncTs ? new Date(fb.lastSyncTs).toLocaleString() : '—'}`
-            : 'Auto-fills weight and sleep from your tracker.'}</div>
-        </div>
-        <div class="integ-actions">
-          ${fb.connected
-            ? `<button class="btn" onclick="syncFitbit()">Sync now</button>
-               <button class="btn btn-skip" onclick="disconnectFitbit()">Disconnect</button>`
-            : isFitbitConfigured()
-              ? `<button class="btn btn-primary" onclick="connectFitbit()">Connect</button>`
-              : `<span class="integ-warn">Add <code>MCM_CONFIG.fitbit.clientId</code> in <code>js/integrations.js</code> to enable.</span>`
-          }
-        </div>
-      </div>
-
-      <div class="integ-row">
-        <div class="integ-info">
-          <div class="integ-name">Strava</div>
-          <div class="integ-detail">${sv.connected
-            ? `Connected · last sync ${sv.lastSyncTs ? new Date(sv.lastSyncTs).toLocaleString() : '—'}`
-            : 'Auto-fills run distance, time, pace from your activities.'}</div>
-        </div>
-        <div class="integ-actions">
-          ${sv.connected
-            ? `<button class="btn" onclick="syncStrava()">Sync now</button>
-               <button class="btn btn-skip" onclick="disconnectStrava()">Disconnect</button>`
-            : isStravaConfigured()
-              ? `<button class="btn btn-primary" onclick="connectStrava()">Connect</button>`
-              : `<span class="integ-warn">Add <code>MCM_CONFIG.strava.clientId</code> + <code>workerUrl</code> in <code>js/integrations.js</code>, and deploy the Worker in <code>worker/</code>.</span>`
-          }
-        </div>
-      </div>
-    </section>
-
     <section class="settings-section">
       <h3 class="settings-h">Data</h3>
       <div class="settings-stats">
