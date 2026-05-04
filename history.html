@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History · MCM 2026 Training</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.hs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+.hs-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.hs-num.accent { color: var(--accent); }
+.hs-num.done { color: var(--done); }
+.hs-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-top: 6px;
+}
+.hs-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.chart-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 18px;
+  flex-wrap: wrap; gap: 8px;
+}
+.chart-h-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.chart-h-sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+/* Weekly miles dual-bar */
+.wkbar-grid {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 3px;
+  height: 140px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+.wkbar-col {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.wkbar-planned, .wkbar-actual {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  transition: opacity 0.15s;
+}
+.wkbar-planned {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 1;
+}
+.wkbar-actual {
+  background: linear-gradient(180deg, var(--accent), #fb923c);
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 2;
+}
+.wkbar-actual.partial { background: linear-gradient(180deg, var(--quality), #fde047); }
+.wkbar-axis {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  text-align: center;
+  font-weight: 600;
+}
+.wkbar-axis div.is-current { color: var(--accent); font-weight: 800; }
+
+.chart-legend-h {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11px; color: var(--text-dim);
+}
+.legend-h-item { display: flex; align-items: center; gap: 6px; }
+.legend-h-swatch {
+  width: 14px; height: 10px; border-radius: 2px;
+}
+
+/* Run list */
+.run-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+.run-card.skip { opacity: 0.55; }
+.rc-date {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.rc-date-day {
+  font-family: var(--font-body);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-faint); font-weight: 700;
+}
+.rc-date-md {
+  font-family: var(--font-mono);
+  font-size: 14px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rc-content { min-width: 0; }
+.rc-title {
+  font-family: var(--font-body);
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.rc-source {
+  font-family: var(--font-mono);
+  font-size: 9px; font-weight: 600;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--accent-soft); color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.rc-stats {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.rc-notes {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 4px;
+}
+.rc-rpe {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-align: center;
+  min-width: 36px;
+}
+.rc-rpe.easy      { color: var(--easy); }
+.rc-rpe.moderate  { color: var(--quality); }
+.rc-rpe.hard      { color: var(--accent); }
+.rc-rpe.shattered { color: var(--race); }
+.rc-rpe-lbl {
+  font-family: var(--font-body);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-faint); font-weight: 700;
+  text-align: center;
+}
+
+.empty-state {
+  background: var(--bg-elev);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .history-stats { grid-template-columns: repeat(2, 1fr); }
+  .run-card { grid-template-columns: 60px 1fr 50px; gap: 12px; padding: 12px 14px; }
+  .wkbar-grid { gap: 2px; height: 100px; }
+  .wkbar-axis { gap: 2px; font-size: 8px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <div class="brand-mark">26</div>
+      <div>
+        <div class="brand-text">MCM 2026</div>
+        <span class="brand-sub">Andy · 4:08 target</span>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <a href="index.html" class="nav-tab">Today</a>
+      <a href="history.html" class="nav-tab active">History</a>
+      <a href="plan.html" class="nav-tab">Plan</a>
+      <a href="exercises.html" class="nav-tab">Strength</a>
+      <a href="race.html" class="nav-tab">Race</a>
+    </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="nav-stat-num" id="ts-days">—</span><span class="nav-stat-lbl">Days to race</span></div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="page-header">
+    <div class="page-kicker" id="hist-kicker">Logbook</div>
+    <h1 class="page-title">History</h1>
+    <p class="page-subtitle">What you actually did, week by week. Logged runs land here. Strava and Fitbit data will appear here once connected.</p>
+  </div>
+
+  <div class="history-stats">
+    <div class="hs-card">
+      <div class="hs-num accent" id="h-miles">0</div>
+      <div class="hs-lbl">Miles run</div>
+      <div class="hs-sub" id="h-miles-sub">of 0 planned</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-num done" id="h-pct">0%</div>
+      <div class="hs-lbl">Workouts done</div>
+      <div class="hs-sub" id="h-pct-sub">0 of 0</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-num" id="h-streak">0</div>
+      <div class="hs-lbl">Day streak</div>
+      <div class="hs-sub">consecutive days</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-num" id="h-avg-rpe">—</div>
+      <div class="hs-lbl">Avg RPE (last 14)</div>
+      <div class="hs-sub" id="h-avg-rpe-sub">last 14 logged runs</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-h-title">Weekly miles · actual vs planned</div>
+        <div class="chart-h-sub" id="wkbar-sub">— actual / 627 planned · current week highlighted</div>
+      </div>
+    </div>
+    <div class="wkbar-grid" id="wkbar-grid"></div>
+    <div class="wkbar-axis" id="wkbar-axis"></div>
+    <div class="chart-legend-h">
+      <div class="legend-h-item"><div class="legend-h-swatch" style="background: linear-gradient(180deg, var(--accent), #fb923c);"></div>Actual (full week)</div>
+      <div class="legend-h-item"><div class="legend-h-swatch" style="background: linear-gradient(180deg, var(--quality), #fde047);"></div>Actual (in progress)</div>
+      <div class="legend-h-item"><div class="legend-h-swatch" style="background: var(--bg-elev); border: 1px solid var(--border);"></div>Planned</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-h-title">Weight</div>
+        <div class="chart-h-sub" id="weight-sub">— logs · target 173 lbs</div>
+      </div>
+    </div>
+    <div id="weight-chart"></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-h-title">Sleep · 7-day rolling avg</div>
+        <div class="chart-h-sub" id="sleep-sub">— logs · target 6.4 hrs</div>
+      </div>
+    </div>
+    <div id="sleep-chart"></div>
+  </div>
+
+  <h2 class="section-title">
+    <span>Recent runs</span>
+    <span class="section-title-rt">Last 14 logged · newest first</span>
+  </h2>
+  <div id="run-list"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script>
+bindTopnavStats();
+
+// ===== HISTORY: SUMMARY STATS =====
+const totals = totalsAcrossPlan();
+document.getElementById('h-miles').textContent = totals.totalDone.toFixed(1);
+document.getElementById('h-miles-sub').textContent = `of ${Math.round(totals.totalPlanned)} planned`;
+const pct = totals.totalCount === 0 ? 0 : Math.round((totals.completedCount / totals.totalCount) * 100);
+document.getElementById('h-pct').textContent = pct + '%';
+document.getElementById('h-pct-sub').textContent = `${totals.completedCount} of ${totals.totalCount}`;
+
+// Streak (same logic as Today page)
+function computeStreak() {
+  const cur = getCurrentWeekDay();
+  if (cur.beforeStart) return 0;
+  let streak = 0;
+  let wk = cur.week, di = cur.dayIdx - 1;
+  if (di < 0) { wk--; di = 6; }
+  while (wk >= 1) {
+    const day = PLAN[wk - 1].days[di];
+    const w = getWorkout(wk, di);
+    const counted = day.type === 'rest' || w.status === 'done' || w.status === 'skip';
+    if (!counted) break;
+    streak++;
+    di--;
+    if (di < 0) { wk--; di = 6; }
+  }
+  return streak;
+}
+document.getElementById('h-streak').textContent = computeStreak();
+
+// Recent logged runs (excluding skips and rests, with actualMiles)
+const recentRuns = [];
+PLAN.forEach((wk, wi) => {
+  wk.days.forEach((d, di) => {
+    const w = getWorkout(wi + 1, di);
+    if (w.status === 'done' && d.type !== 'rest') {
+      recentRuns.push({ week: wi + 1, dayIdx: di, day: d, workout: w });
+    }
+  });
+});
+recentRuns.reverse(); // newest first
+
+// Avg RPE last 14
+const recent14 = recentRuns.slice(0, 14).filter(r => r.workout.rpe);
+if (recent14.length) {
+  const avgRpe = recent14.reduce((s, r) => s + r.workout.rpe, 0) / recent14.length;
+  document.getElementById('h-avg-rpe').textContent = avgRpe.toFixed(1);
+  document.getElementById('h-avg-rpe-sub').textContent = `${recent14.length} runs with RPE`;
+} else {
+  document.getElementById('h-avg-rpe-sub').textContent = 'no RPE logged yet';
+}
+
+// ===== WEEKLY MILES BAR CHART =====
+const cur = getCurrentWeekDay();
+const wkActual = PLAN.map((wk, wi) => {
+  let miles = 0;
+  wk.days.forEach((d, di) => {
+    const w = getWorkout(wi + 1, di);
+    if (w.status === 'done') miles += w.actualMiles ?? d.workout?.total ?? 0;
+  });
+  return miles;
+});
+const wkPlanned = PLAN.map(wk => wk.miles);
+const maxBar = Math.max(...wkPlanned, ...wkActual);
+
+let totalActual = 0;
+wkActual.forEach(m => totalActual += m);
+document.getElementById('wkbar-sub').textContent = `${totalActual.toFixed(1)} actual / ${Math.round(totals.totalPlanned)} planned · current week highlighted`;
+
+document.getElementById('wkbar-grid').innerHTML = PLAN.map((wk, i) => {
+  const planH = (wkPlanned[i] / maxBar) * 100;
+  const actH = (wkActual[i] / maxBar) * 100;
+  const isCurrentWeek = wk.week === cur.week;
+  const partial = isCurrentWeek && !cur.afterEnd;
+  return `
+    <div class="wkbar-col" title="Week ${wk.week}: ${wkActual[i].toFixed(1)} / ${wkPlanned[i]} mi">
+      <div class="wkbar-planned" style="height: ${planH}%"></div>
+      ${actH > 0 ? `<div class="wkbar-actual ${partial ? 'partial' : ''}" style="height: ${actH}%"></div>` : ''}
+    </div>
+  `;
+}).join('');
+document.getElementById('wkbar-axis').innerHTML = PLAN.map(wk => {
+  const isCurrent = wk.week === cur.week;
+  return `<div class="${isCurrent ? 'is-current' : ''}">${wk.week}</div>`;
+}).join('');
+
+// ===== WEIGHT CHART (SVG line) =====
+const W = 720, H = 180, PAD = { l: 40, r: 16, t: 12, b: 28 };
+function fmtMd(d) {
+  const mo = d.toLocaleString('en-US', { month: 'short' });
+  return `${mo} ${d.getDate()}`;
+}
+function svgLineChart({ points, target, startVal, goalVal, yLabel, container, yMin, yMax }) {
+  const root = document.getElementById(container);
+  if (!points.length) {
+    root.innerHTML = `<div class="empty-state">No ${yLabel.toLowerCase()} logs yet — log on the Today page.</div>`;
+    return;
+  }
+  const minD = points[0].date, maxD = points[points.length - 1].date;
+  const dRange = Math.max(1, (maxD - minD));
+  const ys = points.map(p => p.val);
+  const lo = yMin != null ? yMin : Math.min(...ys, target ?? Infinity, goalVal ?? Infinity);
+  const hi = yMax != null ? yMax : Math.max(...ys, startVal ?? -Infinity, target ?? -Infinity);
+  const span = Math.max(1, hi - lo);
+  const x = d => PAD.l + ((d - minD) / dRange) * (W - PAD.l - PAD.r);
+  const y = v => PAD.t + (1 - (v - lo) / span) * (H - PAD.t - PAD.b);
+
+  const targetLine = target != null ? `<line x1="${PAD.l}" y1="${y(target)}" x2="${W - PAD.r}" y2="${y(target)}" stroke="var(--easy)" stroke-width="1" stroke-dasharray="4 4" />
+    <text x="${W - PAD.r}" y="${y(target) - 4}" text-anchor="end" font-size="10" font-family="var(--font-mono)" fill="var(--easy)" font-weight="700">target ${target}</text>` : '';
+  const startLine = startVal != null ? `<line x1="${PAD.l}" y1="${y(startVal)}" x2="${W - PAD.r}" y2="${y(startVal)}" stroke="var(--text-faint)" stroke-width="1" stroke-dasharray="2 4" />
+    <text x="${W - PAD.r}" y="${y(startVal) + 12}" text-anchor="end" font-size="10" font-family="var(--font-mono)" fill="var(--text-faint)">start ${startVal}</text>` : '';
+
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(1)},${y(p.val).toFixed(1)}`).join(' ');
+  const dots = points.map(p => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(p.val).toFixed(1)}" r="3" fill="var(--accent)" />`).join('');
+  const xLabels = `<text x="${PAD.l}" y="${H - 8}" font-size="10" font-family="var(--font-mono)" fill="var(--text-faint)">${fmtMd(minD)}</text>
+    <text x="${W - PAD.r}" y="${H - 8}" text-anchor="end" font-size="10" font-family="var(--font-mono)" fill="var(--text-faint)">${fmtMd(maxD)}</text>`;
+  const yLabels = `<text x="${PAD.l - 6}" y="${(y(hi) + 4).toFixed(1)}" text-anchor="end" font-size="10" font-family="var(--font-mono)" fill="var(--text-faint)">${hi.toFixed(1)}</text>
+    <text x="${PAD.l - 6}" y="${(y(lo) + 4).toFixed(1)}" text-anchor="end" font-size="10" font-family="var(--font-mono)" fill="var(--text-faint)">${lo.toFixed(1)}</text>`;
+
+  root.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%; height:${H}px; display:block;">
+      ${startLine}
+      ${targetLine}
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      ${dots}
+      ${xLabels}
+      ${yLabels}
+    </svg>
+  `;
+}
+
+const weightPoints = mcmState.weights.map(w => ({ date: new Date(w.date), val: w.lbs }));
+weightPoints.sort((a, b) => a.date - b.date);
+document.getElementById('weight-sub').textContent = `${weightPoints.length} logs · target ${RUNNER.goalWeight} lbs`;
+svgLineChart({
+  points: weightPoints,
+  target: RUNNER.goalWeight,
+  startVal: RUNNER.startWeight,
+  yLabel: 'Weight',
+  container: 'weight-chart',
+});
+
+// Sleep 7-day rolling
+const sleepRaw = mcmState.sleep.map(s => ({ date: new Date(s.date), val: s.hrs }));
+sleepRaw.sort((a, b) => a.date - b.date);
+const sleepRolling = sleepRaw.map((p, i) => {
+  const window = sleepRaw.slice(Math.max(0, i - 6), i + 1);
+  const avg = window.reduce((s, x) => s + x.val, 0) / window.length;
+  return { date: p.date, val: avg };
+});
+document.getElementById('sleep-sub').textContent = `${sleepRaw.length} logs · target 6.4 hrs`;
+svgLineChart({
+  points: sleepRolling,
+  target: 6.4,
+  yLabel: 'Sleep',
+  container: 'sleep-chart',
+  yMin: 4, yMax: 9,
+});
+
+// ===== RECENT RUNS LIST =====
+const runListEl = document.getElementById('run-list');
+if (recentRuns.length === 0) {
+  runListEl.innerHTML = '<div class="empty-state">No logged runs yet — start on the Today page.</div>';
+} else {
+  runListEl.innerHTML = recentRuns.slice(0, 14).map(r => {
+    const w = r.workout;
+    const isStrava = w.source === 'strava';
+    const stats = [];
+    if (w.actualMiles) stats.push(`${w.actualMiles} mi`);
+    if (w.durationSec) stats.push(secToHms(w.durationSec));
+    if (w.actualMiles && w.durationSec) stats.push(paceFromMilesAndSec(w.actualMiles, w.durationSec));
+    if (w.gels) stats.push(`${w.gels} gel${w.gels > 1 ? 's' : ''}`);
+    return `
+      <div class="run-card">
+        <div class="rc-date">
+          <span class="rc-date-day">${r.day.day}</span>
+          <span class="rc-date-md">${r.day.date}</span>
+        </div>
+        <div class="rc-content">
+          <div class="rc-title">
+            <span>${r.day.title}</span>
+            ${isStrava ? '<span class="rc-source">strava</span>' : ''}
+          </div>
+          <div class="rc-stats">${stats.join(' · ') || 'logged · no details'}</div>
+          ${w.notes ? `<div class="rc-notes">📝 ${w.notes}</div>` : ''}
+        </div>
+        <div>
+          ${w.rpe ? `<div class="rc-rpe ${w.felt || ''}">${w.rpe}</div><div class="rc-rpe-lbl">RPE</div>` : '<div class="rc-rpe">—</div><div class="rc-rpe-lbl">RPE</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+</script>
+</body>
+</html>
