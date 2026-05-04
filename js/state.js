@@ -276,31 +276,45 @@ function proteinTargetForWeek(weekNum) {
 
 // ===== DAILY SCHEDULE (today, from wake to sleep) =====
 // Built around the user's real week:
-//   Mon + Fri:    day job, off 5:30 PM, home 7:00 PM, no restaurant
-//   Tue–Thu:      day job + restaurant 6 PM – 10 PM, home 10:40 PM
-//   Sat + Sun:    assumed off restaurant (confirm if wrong)
+//   Mon + Fri:    day job, off 5:30 PM, home 7:00 PM, NIGHT RUN preferred (7:30 PM)
+//   Tue + Wed + Thu: day job + restaurant 6:00 PM – 10:00 PM, home 10:40 PM
+//   Sat:          restaurant 5:00 PM – 10:00 PM, home 10:40 PM
+//   Sun:          restaurant 3:00 PM – 10:00 PM, home 10:40 PM (longest shift)
 //   Sleep:        12:30 AM every night
+const RESTAURANT_NIGHTS = {
+  Tue: { headOut: '5:30 PM', start: '6:00 PM', end: '10:00 PM', shiftHrs: 4 },
+  Wed: { headOut: '5:30 PM', start: '6:00 PM', end: '10:00 PM', shiftHrs: 4 },
+  Thu: { headOut: '5:30 PM', start: '6:00 PM', end: '10:00 PM', shiftHrs: 4 },
+  Sat: { headOut: '4:30 PM', start: '5:00 PM', end: '10:00 PM', shiftHrs: 5 },
+  Sun: { headOut: '2:30 PM', start: '3:00 PM', end: '10:00 PM', shiftHrs: 7 },
+};
+
 function buildDailySchedule(day, week) {
   const t = day.type;
-  const dow = day.day;                                          // 'Mon'…'Sun'
-  const isAM = day.when === 'AM';
-  const isPM = day.when === 'PM';
+  const dow = day.day;
   const isLong = t === 'long' || t === 'race';
   const isQuality = t === 'quality';
   const isRest = t === 'rest';
   const isStrength = t === 'strength';
   const totalMi = day.workout?.total || 0;
 
-  const isRestaurantNight = ['Tue', 'Wed', 'Thu'].includes(dow);
-  const isWorkdayNoRestaurant = ['Mon', 'Fri'].includes(dow);
-  const isWeekend = ['Sat', 'Sun'].includes(dow);
+  const restaurant = RESTAURANT_NIGHTS[dow] || null;
+  const isRestaurantNight = !!restaurant;
+  const isMonOrFri = ['Mon', 'Fri'].includes(dow);
+
+  // User preference: night run on Mon + Fri (the only evenings entirely off restaurant).
+  // Strength stays AM (Thursday is restaurant night; not relevant on Mon/Fri but keep rule).
+  const userPrefersNightRun = isMonOrFri && !isRest && !isStrength;
+  const runWhen = userPrefersNightRun ? 'PM' : day.when;
+  const runIsAM = runWhen === 'AM' && !isRest;
+  const runIsPM = runWhen === 'PM' && !isRest;
 
   const items = [];
 
   // ===== MORNING =====
   items.push({ time: '5:30 AM', icon: '☀️', title: 'Wake + 16 oz water', detail: 'Hydrate first thing. Bathroom.' });
 
-  if (isAM && !isRest) {
+  if (runIsAM) {
     if (isLong) {
       items.push({ time: '5:45 AM', icon: '🍌', title: 'Pre-long-run breakfast', detail: 'Banana + 1 slice toast with honey + coffee · ~250 cal · 60 min before.' });
     } else if (isQuality) {
@@ -310,14 +324,7 @@ function buildDailySchedule(day, week) {
     } else if (isStrength) {
       items.push({ time: '6:00 AM', icon: '🥚', title: 'Pre-strength snack', detail: 'Greek yogurt + berries · ~200 cal · 20g protein.' });
     }
-  } else if (isRest) {
-    items.push({ time: '6:30 AM', icon: '☕', title: 'Breakfast', detail: 'Rest day — eat normally · oats + fruit + eggs · ~400 cal.' });
-  } else {
-    // PM workout day — bigger AM meal because the run is hours away
-    items.push({ time: '6:30 AM', icon: '🍳', title: 'Breakfast', detail: 'Bigger meal since run is PM · oats + fruit + eggs · ~400 cal.' });
-  }
 
-  if (isAM && !isRest) {
     items.push({ time: '6:30 AM', icon: isStrength ? '🏋️' : '👟', title: day.title, detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace !== '—' ? day.pace : 'Form first'}` });
 
     if (isLong && totalMi >= 10) {
@@ -335,54 +342,103 @@ function buildDailySchedule(day, week) {
         ? 'Whey shake or Greek yogurt + berries · 20–25g protein · ~250 cal.'
         : 'Recovery Smoothie (Fuel page) · 30g carb + 20g protein · ~350 cal.',
     });
+  } else if (isRest) {
+    items.push({ time: '6:30 AM', icon: '☕', title: 'Breakfast', detail: 'Rest day — eat normally · oats + fruit + eggs · ~400 cal.' });
+  } else {
+    // Run is later (PM or night) — bigger AM meal
+    items.push({ time: '6:30 AM', icon: '🍳', title: 'Breakfast', detail: 'Bigger meal since the run is hours away · oats + fruit + eggs · ~400 cal.' });
   }
 
   // ===== MIDDAY =====
-  items.push({ time: '9:00 AM',  icon: '💧', title: '16 oz water',  detail: 'Refill bottle. Sip through morning.' });
-  items.push({ time: '12:30 PM', icon: '🍽', title: 'Lunch',         detail: 'Vegetarian + balanced · ~600 cal · 30g+ protein.' });
-  items.push({ time: '3:00 PM',  icon: '💧', title: '16 oz water',  detail: 'Mid-afternoon hydration check.' });
-  items.push({ time: '4:00 PM',  icon: '☕', title: 'Last coffee',   detail: 'Cut caffeine by 4 PM to protect tonight\'s sleep.' });
+  items.push({ time: '9:00 AM',  icon: '💧', title: '16 oz water', detail: 'Refill bottle. Sip through morning.' });
+  items.push({ time: '12:30 PM', icon: '🍽', title: 'Lunch',       detail: 'Vegetarian + balanced · ~600 cal · 30g+ protein.' });
+  items.push({ time: '3:00 PM',  icon: '💧', title: '16 oz water', detail: 'Mid-afternoon hydration check.' });
+  items.push({ time: '4:00 PM',  icon: '☕', title: 'Last coffee',  detail: 'Cut caffeine by 4 PM to protect tonight\'s sleep.' });
 
-  // ===== PM WORKOUT (only if scheduled and slot exists) =====
-  if (isPM && !isRest) {
-    if (isRestaurantNight) {
-      items.push({ time: '4:30 PM', icon: '⚠️',  title: 'PM run vs restaurant conflict', detail: `${day.title} scheduled PM but restaurant 6-10 PM. Move this run to AM tomorrow, or skip.` });
-    } else if (isWorkdayNoRestaurant) {
-      items.push({ time: '7:00 PM', icon: '🍌', title: 'Pre-run snack', detail: 'Banana + sip water · 30 min before run.' });
-      items.push({ time: '7:30 PM', icon: '👟', title: day.title,        detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
-      items.push({ time: '8:30 PM', icon: '🥤', title: 'Recovery + late dinner', detail: 'Eat right after run · ~700 cal · vegetarian + protein.' });
-    } else {
-      // Weekend PM
-      items.push({ time: '4:30 PM', icon: '🍌', title: 'Pre-run snack', detail: 'Banana + 200 cal · 30 min before.' });
-      items.push({ time: '5:00 PM', icon: '👟', title: day.title,        detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
-      items.push({ time: '6:00 PM', icon: '🥤', title: 'Recovery',       detail: 'Smoothie or recovery snack · ~300 cal.' });
-    }
+  // ===== EVENING — branch by day pattern =====
+  if (isRestaurantNight) {
+    const headOutLabel = (dow === 'Sat' || dow === 'Sun') ? 'Head to restaurant' : 'Off day job, head to restaurant';
+    items.push({ time: restaurant.headOut, icon: '🚗', title: headOutLabel,                   detail: 'Sip water on the way.' });
+    items.push({ time: restaurant.start,   icon: '🍜', title: 'Restaurant shift starts',     detail: `${restaurant.shiftHrs}-hr shift · ~${restaurant.shiftHrs * 175} cal across · smart kitchen-perk eating.` });
+    items.push({ time: '8:00 PM',          icon: '💧', title: '16–32 oz water',              detail: 'Kitchen heat dehydrates fast. Keep a bottle within reach.' });
+    items.push({ time: restaurant.end,     icon: '🚗', title: 'Off restaurant, head home',   detail: '40-min commute. Sip water.' });
+    items.push({ time: '10:40 PM',         icon: '🏠', title: 'Home',                         detail: 'Decompress. Light snack only if hungry · ~150 cal max.' });
+  } else if (runIsPM) {
+    // Mon / Fri night run — only fits when restaurant is off
+    items.push({ time: '5:30 PM', icon: '🚗', title: 'Off work, head home',  detail: 'Commute home. Drink water on the way.' });
+    items.push({ time: '7:00 PM', icon: '🍌', title: 'Pre-run snack',         detail: 'Banana or 1 slice toast + PB · ~200 cal · 30 min before run.' });
+    items.push({ time: '7:30 PM', icon: '👟', title: day.title,               detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
+    items.push({ time: '8:30 PM', icon: '🥤', title: 'Recovery + late dinner', detail: 'Smoothie within 30 min of run, then dinner · ~700 cal total · vegetarian + protein.' });
+  } else {
+    // Mon / Fri rest day or Sat/Sun without restaurant (shouldn't hit since Sat/Sun are restaurants now)
+    items.push({ time: '5:30 PM', icon: '🚗', title: 'Off work, head home', detail: 'Commute home.' });
+    items.push({ time: '7:00 PM', icon: '🍽', title: 'Dinner',              detail: 'Vegetarian + protein · ~700 cal · home cooked.' });
   }
 
-  // ===== EVENING — branch by day-of-week =====
-  if (isRestaurantNight) {
-    items.push({ time: '5:30 PM',  icon: '🚗',  title: 'Off day job',                  detail: 'Head straight to restaurant.' });
-    items.push({ time: '6:00 PM',  icon: '🍜',  title: 'Restaurant shift starts',      detail: 'Smart eating from kitchen perks · ~700 cal across shift. Avoid greasy + spicy.' });
-    items.push({ time: '8:00 PM',  icon: '💧',  title: '16–32 oz water',              detail: 'Kitchen heat dehydrates fast. Keep a bottle within reach.' });
-    items.push({ time: '10:00 PM', icon: '🚗',  title: 'Off restaurant, head home',   detail: '40-min commute. Sip water.' });
-    items.push({ time: '10:40 PM', icon: '🏠',  title: 'Home',                         detail: 'Decompress. Light snack only if hungry · ~150 cal max.' });
-  } else if (isWorkdayNoRestaurant) {
-    items.push({ time: '5:30 PM', icon: '🚗', title: 'Off work, head home', detail: 'Commute home. Sip water.' });
-    if (!(isPM && !isRest)) {
-      items.push({ time: '7:00 PM', icon: '🍽', title: 'Dinner', detail: 'Vegetarian + protein · ~700 cal · home cooked. Time for a real meal.' });
-    }
-    items.push({ time: '8:30 PM', icon: '💧', title: '16 oz water', detail: 'Last big water — taper before bed to avoid 3 AM bathroom trips.' });
-  } else {
-    // Weekend
-    items.push({ time: '5:30 PM', icon: '🍽', title: 'Dinner',     detail: 'Vegetarian + protein · ~700 cal.' });
+  if (!isRestaurantNight) {
     items.push({ time: '8:30 PM', icon: '💧', title: '16 oz water', detail: 'Last big water — taper before bed.' });
   }
 
-  // ===== WIND-DOWN + SLEEP (sleep at 12:30 AM per user) =====
+  // ===== WIND-DOWN + SLEEP (12:30 AM) =====
+  const sleepNote = isRestaurantNight
+    ? 'Tonight is restaurant — accept the short night, ~5 hrs.'
+    : runIsPM
+      ? 'Aim 7+ tonight (no late shift, easier to bank sleep).'
+      : 'Aim 7+ tonight.';
   items.push({ time: '11:30 PM', icon: '🌙', title: 'Wind down', detail: 'Magnesium glycinate (300–400 mg) · lights down · phone night mode.' });
-  items.push({ time: '12:30 AM', icon: '🛏', title: 'Bed',       detail: `Target 5+ hours nightly. Aim 6.5+ on non-restaurant nights (${isRestaurantNight ? 'tonight is restaurant — accept the short night' : 'try for 7 tonight'}).` });
+  items.push({ time: '12:30 AM', icon: '🛏', title: 'Bed',       detail: `Target 5+ hrs nightly. ${sleepNote}` });
 
   return items;
+}
+
+// ===== FIND LAST SIMILAR WORKOUTS (for "compare to past" panel) =====
+function findLastSimilarWorkouts(currentDay, currentWk, currentDi, limit = 3) {
+  const result = [];
+  let wk = currentWk, di = currentDi - 1;
+  if (di < 0) { wk--; di = 6; }
+  while (wk >= 1 && result.length < limit) {
+    const d = PLAN[wk - 1].days[di];
+    const w = getWorkout(wk, di);
+    if (d.type === currentDay.type && w.status === 'done' && w.actualMiles) {
+      result.push({ week: wk, dayIdx: di, day: d, workout: w });
+    }
+    di--;
+    if (di < 0) { wk--; di = 6; }
+  }
+  return result;
+}
+
+// ===== TRAINING LOAD (acute / chronic) =====
+function trainingLoad() {
+  // Sum miles done in last 7 days vs last 28 days. Ratio > 1.5 = high injury risk.
+  const today = todayDate(); today.setHours(0,0,0,0);
+  const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 7);
+  const twentyEightAgo = new Date(today); twentyEightAgo.setDate(today.getDate() - 28);
+
+  let acute = 0, chronic = 0;
+  if (typeof PLAN === 'undefined') return { acute, chronic, ratio: null, status: 'low' };
+
+  const start = new Date(START_DATE); start.setHours(0,0,0,0);
+  PLAN.forEach((wk, i) => {
+    wk.days.forEach((d, di) => {
+      const dayDate = new Date(start); dayDate.setDate(start.getDate() + i * 7 + di);
+      const w = getWorkout(i + 1, di);
+      if (w.status !== 'done' || !w.actualMiles) return;
+      if (dayDate >= sevenAgo && dayDate <= today) acute += w.actualMiles;
+      if (dayDate >= twentyEightAgo && dayDate <= today) chronic += w.actualMiles;
+    });
+  });
+
+  const acuteAvg = acute / 7;
+  const chronicAvg = chronic / 28;
+  const ratio = chronicAvg > 0 ? acuteAvg / chronicAvg : null;
+  let status = 'building';
+  if (ratio == null) status = 'baseline';
+  else if (ratio < 0.8) status = 'detraining';
+  else if (ratio <= 1.3) status = 'sweet spot';
+  else if (ratio <= 1.5) status = 'pushing';
+  else status = 'high risk';
+  return { acute, chronic, acuteAvg, chronicAvg, ratio, status };
 }
 
 // ===== TODAY'S GEAR HINT =====

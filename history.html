@@ -250,8 +250,10 @@
   <div class="page-header">
     <div class="page-kicker" id="hist-kicker">Logbook</div>
     <h1 class="page-title">History</h1>
-    <p class="page-subtitle">What you actually did, week by week. Logged runs land here. Strava and Fitbit data will appear here once connected.</p>
+    <p class="page-subtitle">What you actually did, week by week.</p>
   </div>
+
+  <div class="load-card" id="training-load"></div>
 
   <div class="history-stats">
     <div class="hs-card">
@@ -355,6 +357,31 @@ function computeStreak() {
   return streak;
 }
 document.getElementById('h-streak').textContent = computeStreak();
+
+// ===== TRAINING LOAD (acute / chronic ratio) =====
+const load = trainingLoad();
+const loadEl = document.getElementById('training-load');
+if (loadEl) {
+  const ratioStr = load.ratio == null ? '—' : load.ratio.toFixed(2);
+  const statusColor = ({ baseline:'var(--text-faint)', detraining:'var(--rest)', 'sweet spot':'var(--easy)', pushing:'var(--quality)', 'high risk':'var(--race)' })[load.status] || 'var(--text)';
+  loadEl.innerHTML = `
+    <div class="load-row">
+      <div class="load-stat">
+        <div class="load-num">${load.acute.toFixed(1)}</div>
+        <div class="load-lbl">Last 7 days</div>
+      </div>
+      <div class="load-stat">
+        <div class="load-num">${load.chronic.toFixed(1)}</div>
+        <div class="load-lbl">Last 28 days</div>
+      </div>
+      <div class="load-stat">
+        <div class="load-num" style="color: ${statusColor}">${ratioStr}</div>
+        <div class="load-lbl">A:C ratio · ${load.status}</div>
+      </div>
+    </div>
+    <div class="load-hint">Acute:Chronic ratio compares your last 7-day average mileage to the 4-week average. Sweet spot is 0.8–1.3; above 1.5 is high injury risk territory.</div>
+  `;
+}
 
 // Recent logged runs (excluding skips and rests, with actualMiles)
 const recentRuns = [];
