@@ -71,6 +71,41 @@ function renderToday() {
     </div>
   ` : '';
 
+  // Strength day: surface the lift list inline (saves a tab-switch to Strength)
+  let strengthHTML = '';
+  if (day.type === 'strength' && typeof EXERCISES !== 'undefined') {
+    const lifts = EXERCISES.strength || [];
+    const circuit = day.extras?.includes('circuit') ? (EXERCISES.circuit || []) : [];
+    const bands = day.extras?.includes('bands') ? (EXERCISES.bands || []) : [];
+    strengthHTML = `
+      <div class="strength-detail">
+        <div class="sd-section">
+          <div class="sd-head"><span class="sd-h-title">Strength A</span><span class="sd-h-meta">${lifts.length} lifts · ~30 min</span></div>
+          <ol class="sd-list">
+            ${lifts.map(ex => `<li><span class="sd-name">${escapeHtml(ex.name)}</span><span class="sd-sets">${escapeHtml(ex.sets)}</span></li>`).join('')}
+          </ol>
+        </div>
+        ${circuit.length ? `
+          <div class="sd-section">
+            <div class="sd-head"><span class="sd-h-title">Core circuit</span><span class="sd-h-meta">${circuit.length} moves · 8–10 min</span></div>
+            <ol class="sd-list">
+              ${circuit.map(ex => `<li><span class="sd-name">${escapeHtml(ex.name)}</span><span class="sd-sets">${escapeHtml(ex.sets)}</span></li>`).join('')}
+            </ol>
+          </div>
+        ` : ''}
+        ${bands.length ? `
+          <div class="sd-section">
+            <div class="sd-head"><span class="sd-h-title">Resistance bands</span><span class="sd-h-meta">${bands.length} moves · 7 min</span></div>
+            <ol class="sd-list">
+              ${bands.map(ex => `<li><span class="sd-name">${escapeHtml(ex.name)}</span><span class="sd-sets">${escapeHtml(ex.sets)}</span></li>`).join('')}
+            </ol>
+          </div>
+        ` : ''}
+        <div class="sd-link"><a href="exercises.html">Form videos on the Strength page →</a></div>
+      </div>
+    `;
+  }
+
   card.innerHTML = `
     ${banner}
     <div class="today-meta">
@@ -93,6 +128,7 @@ function renderToday() {
       </div>
     </div>
     ${purposeHTML}
+    ${strengthHTML}
     ${renderRunLog(cur.week, cur.dayIdx, day, w, done, skipped)}
   `;
 }
@@ -107,12 +143,23 @@ function renderSchedule() {
   const items = buildDailySchedule(day, wk);
   const gear = buildDailyGear(day);
 
+  const target = calorieTargetForWeek(cur.week);
+  const protein = proteinTargetForWeek(cur.week);
+  const dow = day.day;
+  const isRestaurantNight = ['Tue', 'Wed', 'Thu'].includes(dow);
+  const waterOz = isRestaurantNight ? 120 : 100;       // restaurant nights run hot
+
   root.innerHTML = `
     <h2 class="section-title">
       <span>Today's schedule</span>
-      <span class="section-title-rt">${day.day} · ${day.date} · template — adjust to your real life</span>
+      <span class="section-title-rt">${day.day} · ${day.date} · ${isRestaurantNight ? 'restaurant night' : ['Mon','Fri'].includes(dow) ? 'work day, no restaurant' : 'weekend'}</span>
     </h2>
     <div class="schedule-card">
+      <div class="schedule-targets">
+        <div class="st-cell"><span class="st-num">${target.cal.toLocaleString()}</span><span class="st-lbl">cal · ${escapeHtml(target.label)}</span></div>
+        <div class="st-cell"><span class="st-num">${protein}g</span><span class="st-lbl">protein</span></div>
+        <div class="st-cell"><span class="st-num">${waterOz} oz</span><span class="st-lbl">water</span></div>
+      </div>
       <div class="schedule-list">
         ${items.map(it => `
           <div class="sched-row">

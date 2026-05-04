@@ -433,6 +433,81 @@ input:focus, textarea:focus {
 }
 .wp-val { color: var(--text-dim); }
 
+/* ===== STRENGTH DETAIL (today card) ===== */
+.strength-detail {
+  background: var(--strength-soft);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.sd-section { margin-bottom: 14px; }
+.sd-section:last-of-type { margin-bottom: 8px; }
+.sd-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.15);
+}
+.sd-h-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--strength);
+  letter-spacing: -0.01em;
+}
+.sd-h-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sd-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: lift;
+}
+.sd-list li {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed rgba(167, 139, 250, 0.1);
+}
+.sd-list li:last-child { border-bottom: none; }
+.sd-list li::before {
+  counter-increment: lift;
+  content: counter(lift);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  font-weight: 700;
+  text-align: right;
+}
+.sd-name { color: var(--text); font-weight: 600; }
+.sd-sets {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sd-link {
+  margin-top: 8px;
+  font-size: 11px;
+}
+.sd-link a {
+  color: var(--strength);
+  font-weight: 700;
+  text-decoration: none;
+}
+.sd-link a:hover { text-decoration: underline; }
+
 /* ===== TODAY'S SCHEDULE ===== */
 .schedule-card {
   background: var(--card);
@@ -440,6 +515,40 @@ input:focus, textarea:focus {
   border-radius: var(--radius-xl);
   padding: 22px 24px;
   margin-bottom: 32px;
+}
+.schedule-targets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.st-cell {
+  background: var(--bg-elev);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+.st-num {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.st-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 .schedule-list { display: flex; flex-direction: column; }
 .sched-row {
