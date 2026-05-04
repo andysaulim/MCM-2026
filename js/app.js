@@ -5,6 +5,133 @@
 let viewWeek = 1;
 let noteContext = null;
 
+// ===== YESTERDAY RECAP (auto-prompts if unlogged) =====
+function renderYesterday() {
+  const root = document.getElementById('yesterday-recap');
+  if (!root) return;
+  const cur = getCurrentWeekDay();
+  if (cur.beforeStart) { root.innerHTML = ''; return; }
+
+  let yWk = cur.week, yDi = cur.dayIdx - 1;
+  if (yDi < 0) { yWk--; yDi = 6; }
+  if (yWk < 1) { root.innerHTML = ''; return; }
+
+  const yDay = PLAN[yWk - 1].days[yDi];
+  const yW = getWorkout(yWk, yDi);
+  const isRest = yDay.type === 'rest';
+  const done = yW.status === 'done';
+  const skipped = yW.status === 'skip';
+
+  if (isRest) { root.innerHTML = ''; return; }
+
+  if (done) {
+    const parts = [];
+    if (yW.actualMiles) parts.push(`${yW.actualMiles} mi`);
+    if (yW.durationSec) parts.push(secToHms(yW.durationSec));
+    if (yW.actualMiles && yW.durationSec) parts.push(paceFromMilesAndSec(yW.actualMiles, yW.durationSec));
+    if (yW.rpe) parts.push(`RPE ${yW.rpe}`);
+    root.innerHTML = `
+      <div class="yesterday y-done">
+        <span class="y-icon">✓</span>
+        <span class="y-pre">Yesterday</span>
+        <span class="y-text">${escapeHtml(yDay.title)}${parts.length ? ' · ' + escapeHtml(parts.join(' · ')) : ''}</span>
+      </div>`;
+    return;
+  }
+
+  if (skipped) {
+    root.innerHTML = `
+      <div class="yesterday y-skip">
+        <span class="y-icon">⊘</span>
+        <span class="y-pre">Yesterday</span>
+        <span class="y-text">Skipped: ${escapeHtml(yDay.title)}</span>
+      </div>`;
+    return;
+  }
+
+  // Unlogged — prompt with quick actions
+  root.innerHTML = `
+    <div class="yesterday y-pending">
+      <div class="y-prompt">
+        <span class="y-icon">📝</span>
+        <div class="y-text-block">
+          <div class="y-title">Yesterday — ${escapeHtml(yDay.day)} ${escapeHtml(yDay.date)} not logged</div>
+          <div class="y-sub">${escapeHtml(yDay.title)} · log it while it's fresh</div>
+        </div>
+      </div>
+      <div class="y-actions">
+        <button class="btn btn-primary btn-small" onclick="quickLogYesterday(${yWk}, ${yDi}, 'done')">Done as planned</button>
+        <button class="btn btn-small" onclick="jumpToWeekDetail(${yWk})">Edit details</button>
+        <button class="btn btn-small btn-skip" onclick="quickLogYesterday(${yWk}, ${yDi}, 'skip')">Skipped</button>
+      </div>
+    </div>`;
+}
+
+function quickLogYesterday(wk, di, status) {
+  if (status === 'done') {
+    const day = PLAN[wk - 1].days[di];
+    logRun(wk, di, {
+      actualMiles: day.workout?.total || null,
+      durationSec: day.timeMin ? day.timeMin * 60 : null,
+      source: 'manual',
+    });
+    showToast('Logged ✓', 'success');
+  } else {
+    setWorkoutStatus(wk, di, status);
+    showToast('Marked skipped');
+  }
+  renderAll();
+}
+
+function jumpToWeekDetail(wk) {
+  jumpToWeek(wk);
+}
+
+// ===== TODAY COMPLETION RING (small inline visual) =====
+function renderTodayRing() {
+  const root = document.getElementById('today-ring');
+  if (!root) return;
+  const cur = getCurrentWeekDay();
+  if (cur.beforeStart) { root.innerHTML = ''; return; }
+  const day = PLAN[cur.week - 1].days[cur.dayIdx];
+  const w = getWorkout(cur.week, cur.dayIdx);
+  const extras = getExtras(cur.week, cur.dayIdx);
+
+  const items = [];
+  if (day.type !== 'rest') {
+    items.push({ key: 'workout', label: day.type === 'strength' ? 'Strength' : 'Run', done: w.status === 'done' });
+  }
+  (day.extras || []).forEach(ex => {
+    items.push({ key: ex, label: ({ pushups: 'Pushups', circuit: 'Circuit', bands: 'Bands' })[ex] || ex, done: !!extras[ex] });
+  });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const wToday = mcmState.weights.some(x => (x.date || '').startsWith(todayStr));
+  const sToday = mcmState.sleep.some(x => (x.date || '').startsWith(todayStr));
+  items.push({ key: 'weight', label: 'Weight', done: wToday });
+  items.push({ key: 'sleep', label: 'Sleep', done: sToday });
+
+  const doneCount = items.filter(i => i.done).length;
+  const totalCount = items.length;
+  const pct = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+  const C = 2 * Math.PI * 28;
+  const offset = C * (1 - pct / 100);
+
+  root.innerHTML = `
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 64 64" aria-label="Today completion ${pct}%">
+        <circle cx="32" cy="32" r="28" fill="none" stroke="var(--border)" stroke-width="6"/>
+        <circle cx="32" cy="32" r="28" fill="none" stroke="var(--accent)" stroke-width="6"
+                stroke-linecap="round" transform="rotate(-90 32 32)"
+                stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
+        <text x="32" y="36" text-anchor="middle" font-family="var(--font-display)" font-size="16" font-weight="800" fill="var(--text)">${doneCount}/${totalCount}</text>
+      </svg>
+      <div class="ring-text">
+        <div class="ring-title">Today</div>
+        <div class="ring-list">${items.map(i => `<span class="ring-chip ${i.done ? 'on' : ''}">${escapeHtml(i.label)}</span>`).join('')}</div>
+      </div>
+    </div>`;
+}
+
 // ===== TODAY CARD =====
 function renderToday() {
   const cur = getCurrentWeekDay();
@@ -59,6 +186,25 @@ function renderToday() {
       </div>
     `;
   }
+
+  // Compare to last 3 similar workouts (helps see progression)
+  const similar = findLastSimilarWorkouts(day, cur.week, cur.dayIdx, 3);
+  const similarHTML = (!isRestDay(day) && similar.length > 0) ? `
+    <div class="last-similar">
+      <div class="ls-head">Last ${similar.length} ${typeName(day.type).toLowerCase()} run${similar.length > 1 ? 's' : ''}</div>
+      <div class="ls-list">
+        ${similar.map(s => {
+          const pace = paceFromMilesAndSec(s.workout.actualMiles, s.workout.durationSec);
+          return `<div class="ls-item">
+            <span class="ls-wk">Wk ${s.week}</span>
+            <span class="ls-mi">${escapeHtml(String(s.workout.actualMiles))} mi</span>
+            <span class="ls-pace">${escapeHtml(pace || '—')}</span>
+            <span class="ls-rpe">${s.workout.rpe ? 'RPE ' + s.workout.rpe : ''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
 
   // "Why this workout" — purpose + effort + cue, especially helpful for noobs
   const phil = WORKOUT_PURPOSE[day.type];
@@ -129,9 +275,12 @@ function renderToday() {
     </div>
     ${purposeHTML}
     ${strengthHTML}
+    ${similarHTML}
     ${renderRunLog(cur.week, cur.dayIdx, day, w, done, skipped)}
   `;
 }
+
+function isRestDay(day) { return day.type === 'rest'; }
 
 // ===== TODAY'S SCHEDULE (wake → workout → meals → bed) =====
 function renderSchedule() {
@@ -597,7 +746,9 @@ function logSleep() {
 
 // ===== INIT =====
 function renderAll() {
+  renderYesterday();
   renderToday();
+  renderTodayRing();
   renderCheckIn();
   renderSchedule();
   renderTopStats();

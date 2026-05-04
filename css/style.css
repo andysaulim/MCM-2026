@@ -433,6 +433,169 @@ input:focus, textarea:focus {
 }
 .wp-val { color: var(--text-dim); }
 
+/* ===== YESTERDAY RECAP ===== */
+.yesterday {
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.yesterday.y-done {
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+.yesterday.y-done .y-icon { color: var(--done); }
+.yesterday.y-skip {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  opacity: 0.7;
+}
+.yesterday.y-pending {
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px 16px;
+}
+.y-icon { font-size: 16px; font-weight: 700; }
+.y-pre {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.y-text { font-size: 13px; color: var(--text-dim); flex: 1; }
+.y-prompt { display: flex; align-items: center; gap: 12px; }
+.y-text-block { flex: 1; min-width: 0; }
+.y-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.y-sub { font-size: 12px; color: var(--text-dim); }
+.y-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-small { padding: 6px 12px; font-size: 12px; }
+
+/* ===== TODAY COMPLETION RING ===== */
+.ring-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ring-svg { width: 64px; height: 64px; flex-shrink: 0; }
+.ring-text { flex: 1; min-width: 0; }
+.ring-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ring-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.ring-chip {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text-faint);
+  border: 1px solid var(--border-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ring-chip.on {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--done);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* ===== LAST SIMILAR WORKOUTS (today card) ===== */
+.last-similar {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.ls-head {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.ls-list { display: flex; flex-direction: column; gap: 4px; }
+.ls-item {
+  display: grid;
+  grid-template-columns: 56px 60px 80px 1fr;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  align-items: baseline;
+}
+.ls-wk { color: var(--text-faint); font-weight: 600; }
+.ls-mi { color: var(--text); font-weight: 700; }
+.ls-pace { color: var(--accent); font-weight: 600; }
+.ls-rpe { color: var(--text-dim); font-weight: 600; }
+
+/* ===== TRAINING LOAD (history page) ===== */
+.load-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+.load-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.load-stat {
+  background: var(--bg-elev);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.load-num {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.load-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.load-hint { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .ls-item { grid-template-columns: 50px 60px 72px 1fr; gap: 6px; font-size: 11px; }
+  .y-prompt { gap: 8px; }
+  .ring-wrap { padding: 12px 14px; }
+}
+
 /* ===== STRENGTH DETAIL (today card) ===== */
 .strength-detail {
   background: var(--strength-soft);
