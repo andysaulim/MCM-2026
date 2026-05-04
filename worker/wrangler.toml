@@ -1,0 +1,7 @@
+name = "mcm-strava"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# Set as secrets, NOT plain vars:
+#   wrangler secret put STRAVA_CLIENT_ID
+#   wrangler secret put STRAVA_CLIENT_SECRET

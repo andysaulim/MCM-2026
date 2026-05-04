@@ -21,6 +21,21 @@ const MCM_CONFIG = {
 const isFitbitConfigured = () => !!MCM_CONFIG.fitbit.clientId;
 const isStravaConfigured = () => !!MCM_CONFIG.strava.clientId && !!MCM_CONFIG.strava.workerUrl;
 
+// ===== CRYPTO HELPERS (PKCE + state) =====
+async function sha256(s) {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return new Uint8Array(hash);
+}
+function base64url(bytes) {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function randomString(n = 64) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => chars[b % chars.length]).join('');
+}
+
 // ===== SETTINGS BUTTON + MODAL INJECTION =====
 function injectSettingsChrome() {
   const inner = document.querySelector('.topnav-inner');
@@ -72,8 +87,8 @@ function renderSettings() {
     return last.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
   })();
 
-  const fitbit = mcmState.integrations.fitbit;
-  const strava = mcmState.integrations.strava;
+  const fb = mcmState.integrations.fitbit;
+  const sv = mcmState.integrations.strava;
 
   body.innerHTML = `
     <section class="settings-section">
@@ -82,12 +97,12 @@ function renderSettings() {
       <div class="integ-row">
         <div class="integ-info">
           <div class="integ-name">Fitbit</div>
-          <div class="integ-detail">${fitbit.connected
-            ? `Connected · last sync ${fitbit.lastSyncTs ? new Date(fitbit.lastSyncTs).toLocaleString() : '—'}`
+          <div class="integ-detail">${fb.connected
+            ? `Connected · last sync ${fb.lastSyncTs ? new Date(fb.lastSyncTs).toLocaleString() : '—'}`
             : 'Auto-fills weight and sleep from your tracker.'}</div>
         </div>
         <div class="integ-actions">
-          ${fitbit.connected
+          ${fb.connected
             ? `<button class="btn" onclick="syncFitbit()">Sync now</button>
                <button class="btn btn-skip" onclick="disconnectFitbit()">Disconnect</button>`
             : isFitbitConfigured()
@@ -100,12 +115,12 @@ function renderSettings() {
       <div class="integ-row">
         <div class="integ-info">
           <div class="integ-name">Strava</div>
-          <div class="integ-detail">${strava.connected
-            ? `Connected · last sync ${strava.lastSyncTs ? new Date(strava.lastSyncTs).toLocaleString() : '—'}`
+          <div class="integ-detail">${sv.connected
+            ? `Connected · last sync ${sv.lastSyncTs ? new Date(sv.lastSyncTs).toLocaleString() : '—'}`
             : 'Auto-fills run distance, time, pace from your activities.'}</div>
         </div>
         <div class="integ-actions">
-          ${strava.connected
+          ${sv.connected
             ? `<button class="btn" onclick="syncStrava()">Sync now</button>
                <button class="btn btn-skip" onclick="disconnectStrava()">Disconnect</button>`
             : isStravaConfigured()
@@ -173,26 +188,308 @@ function importData(ev) {
 
 function clearAllData() {
   if (!confirm('Erase all logs, weights, sleep, and integration tokens? This cannot be undone (export first).')) return;
-  if (!confirm('Really, really sure? Type-OK irreversible.')) return;
+  if (!confirm('Really, really sure? This is irreversible.')) return;
   localStorage.removeItem(STATE_KEY);
   showToast('Data cleared · reloading');
   setTimeout(() => location.reload(), 800);
 }
 
-// ===== INTEGRATION STUBS (filled in Passes 8/9) =====
-function connectFitbit()    { showToast('Fitbit OAuth not wired yet', 'warn'); }
-function syncFitbit()       { showToast('Fitbit sync not wired yet', 'warn'); }
+// ============================================================
+// FITBIT — PKCE OAuth (browser-only, no backend)
+// ============================================================
+async function connectFitbit() {
+  if (!isFitbitConfigured()) { showToast('Fitbit Client ID not configured', 'warn'); return; }
+  const verifier = randomString(96);
+  const state = randomString(24);
+  const challenge = base64url(await sha256(verifier));
+  sessionStorage.setItem('fitbit_pkce_verifier', verifier);
+  sessionStorage.setItem('fitbit_oauth_state', state);
+  const params = new URLSearchParams({
+    client_id: MCM_CONFIG.fitbit.clientId,
+    response_type: 'code',
+    scope: MCM_CONFIG.fitbit.scopes.join(' '),
+    redirect_uri: MCM_CONFIG.fitbit.redirectUri,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state,
+  });
+  location.href = `https://www.fitbit.com/oauth2/authorize?${params}`;
+}
+
+async function handleFitbitCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const stateParam = params.get('state');
+  const verifier = sessionStorage.getItem('fitbit_pkce_verifier');
+  const expectedState = sessionStorage.getItem('fitbit_oauth_state');
+  if (!code || !verifier || !expectedState) return false;
+  if (stateParam !== expectedState) {
+    showToast('Fitbit OAuth state mismatch', 'warn');
+    sessionStorage.removeItem('fitbit_pkce_verifier');
+    sessionStorage.removeItem('fitbit_oauth_state');
+    history.replaceState({}, '', location.pathname);
+    return false;
+  }
+  try {
+    const body = new URLSearchParams({
+      client_id: MCM_CONFIG.fitbit.clientId,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: MCM_CONFIG.fitbit.redirectUri,
+      code_verifier: verifier,
+    });
+    const resp = await fetch('https://api.fitbit.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.errors?.[0]?.message || 'Fitbit token exchange failed');
+    mcmState.integrations.fitbit = {
+      connected: true,
+      userId: data.user_id,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+      lastSyncTs: null,
+    };
+    saveState(mcmState);
+    sessionStorage.removeItem('fitbit_pkce_verifier');
+    sessionStorage.removeItem('fitbit_oauth_state');
+    history.replaceState({}, '', location.pathname);
+    showToast('Fitbit connected ✓', 'success');
+    await syncFitbit();
+    return true;
+  } catch (e) {
+    showToast('Fitbit connect failed: ' + e.message, 'warn');
+    return false;
+  }
+}
+
+async function refreshFitbitToken() {
+  const fb = mcmState.integrations.fitbit;
+  if (!fb.refreshToken) throw new Error('no Fitbit refresh token');
+  const resp = await fetch('https://api.fitbit.com/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: MCM_CONFIG.fitbit.clientId,
+      grant_type: 'refresh_token',
+      refresh_token: fb.refreshToken,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error('Fitbit refresh failed');
+  fb.accessToken = data.access_token;
+  fb.refreshToken = data.refresh_token;
+  fb.expiresAt = Date.now() + data.expires_in * 1000;
+  saveState(mcmState);
+}
+
+async function fitbitFetch(path) {
+  const fb = mcmState.integrations.fitbit;
+  if (Date.now() > fb.expiresAt - 60000) await refreshFitbitToken();
+  const resp = await fetch(`https://api.fitbit.com${path}`, {
+    headers: { Authorization: `Bearer ${fb.accessToken}` },
+  });
+  if (resp.status === 401) {
+    await refreshFitbitToken();
+    return fitbitFetch(path);
+  }
+  if (!resp.ok) throw new Error(`Fitbit ${resp.status}`);
+  return resp.json();
+}
+
+async function syncFitbit() {
+  if (!mcmState.integrations.fitbit.connected) return;
+  try {
+    showToast('Syncing Fitbit…');
+    const today = new Date().toISOString().slice(0, 10);
+    const [weightData, sleepData] = await Promise.all([
+      fitbitFetch(`/1/user/-/body/log/weight/date/${today}/30d.json`),
+      fitbitFetch(`/1.2/user/-/sleep/date/${today}/30d.json`),
+    ]);
+
+    const existingW = new Set(mcmState.weights.filter(w => w.source === 'fitbit').map(w => w.date.slice(0, 10)));
+    let nW = 0;
+    (weightData.weight || []).forEach(w => {
+      if (existingW.has(w.date)) return;
+      mcmState.weights.push({ date: w.date + 'T00:00:00Z', lbs: w.weight, source: 'fitbit' });
+      nW++;
+    });
+    mcmState.weights.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const existingS = new Set(mcmState.sleep.filter(s => s.source === 'fitbit').map(s => s.date.slice(0, 10)));
+    let nS = 0;
+    (sleepData.sleep || []).forEach(s => {
+      if (existingS.has(s.dateOfSleep)) return;
+      mcmState.sleep.push({ date: s.dateOfSleep + 'T00:00:00Z', hrs: +(s.duration / 3600000).toFixed(2), source: 'fitbit' });
+      nS++;
+    });
+    mcmState.sleep.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    mcmState.integrations.fitbit.lastSyncTs = Date.now();
+    saveState(mcmState);
+    if (typeof renderAll === 'function') renderAll();
+    renderSettings();
+    showToast(`Fitbit: +${nW} weights · +${nS} sleep`, 'success');
+  } catch (e) {
+    showToast('Fitbit sync failed: ' + e.message, 'warn');
+  }
+}
+
 function disconnectFitbit() {
   mcmState.integrations.fitbit = { connected: false, userId: null, accessToken: null, refreshToken: null, expiresAt: null, lastSyncTs: null };
   saveState(mcmState);
   renderSettings();
+  showToast('Fitbit disconnected');
 }
-function connectStrava()    { showToast('Strava OAuth not wired yet', 'warn'); }
-function syncStrava()       { showToast('Strava sync not wired yet', 'warn'); }
+
+// ============================================================
+// STRAVA — OAuth via Cloudflare Worker (client_secret server-side)
+// ============================================================
+async function connectStrava() {
+  if (!isStravaConfigured()) { showToast('Strava not configured', 'warn'); return; }
+  const state = randomString(24);
+  sessionStorage.setItem('strava_oauth_state', state);
+  const params = new URLSearchParams({
+    client_id: MCM_CONFIG.strava.clientId,
+    redirect_uri: location.origin + location.pathname,
+    response_type: 'code',
+    approval_prompt: 'auto',
+    scope: MCM_CONFIG.strava.scopes.join(','),
+    state,
+  });
+  location.href = `https://www.strava.com/oauth/authorize?${params}`;
+}
+
+async function handleStravaCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const stateParam = params.get('state');
+  const expectedState = sessionStorage.getItem('strava_oauth_state');
+  if (!code || !expectedState) return false;
+  if (stateParam !== expectedState) {
+    showToast('Strava OAuth state mismatch', 'warn');
+    sessionStorage.removeItem('strava_oauth_state');
+    history.replaceState({}, '', location.pathname);
+    return false;
+  }
+  try {
+    const resp = await fetch(`${MCM_CONFIG.strava.workerUrl}/token-exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || 'Strava token exchange failed');
+    mcmState.integrations.strava = {
+      connected: true,
+      athleteId: data.athlete?.id || null,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: data.expires_at * 1000,
+      lastSyncTs: null,
+    };
+    saveState(mcmState);
+    sessionStorage.removeItem('strava_oauth_state');
+    history.replaceState({}, '', location.pathname);
+    showToast('Strava connected ✓', 'success');
+    await syncStrava();
+    return true;
+  } catch (e) {
+    showToast('Strava connect failed: ' + e.message, 'warn');
+    return false;
+  }
+}
+
+async function refreshStravaToken() {
+  const sv = mcmState.integrations.strava;
+  if (!sv.refreshToken) throw new Error('no Strava refresh token');
+  const resp = await fetch(`${MCM_CONFIG.strava.workerUrl}/token-refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: sv.refreshToken }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error('Strava refresh failed');
+  sv.accessToken = data.access_token;
+  sv.refreshToken = data.refresh_token;
+  sv.expiresAt = data.expires_at * 1000;
+  saveState(mcmState);
+}
+
+async function stravaFetch(path) {
+  const sv = mcmState.integrations.strava;
+  if (Date.now() > sv.expiresAt - 60000) await refreshStravaToken();
+  const resp = await fetch(`https://www.strava.com/api/v3${path}`, {
+    headers: { Authorization: `Bearer ${sv.accessToken}` },
+  });
+  if (resp.status === 401) { await refreshStravaToken(); return stravaFetch(path); }
+  if (!resp.ok) throw new Error(`Strava ${resp.status}`);
+  return resp.json();
+}
+
+function weekDayFromDate(date) {
+  date = new Date(date); date.setHours(0,0,0,0);
+  const start = new Date(START_DATE); start.setHours(0,0,0,0);
+  const diffDays = Math.floor((date - start) / 86400000);
+  if (diffDays < 0 || diffDays >= 175) return null;
+  return { week: Math.floor(diffDays / 7) + 1, dayIdx: diffDays % 7 };
+}
+
+async function syncStrava() {
+  if (!mcmState.integrations.strava.connected) return;
+  try {
+    showToast('Syncing Strava…');
+    // Pull activities from a week before last sync (or training start) so any backdated logs catch up.
+    const since = mcmState.integrations.strava.lastSyncTs
+      ? Math.floor(mcmState.integrations.strava.lastSyncTs / 1000) - 86400 * 7
+      : Math.floor(START_DATE.getTime() / 1000);
+    const acts = await stravaFetch(`/athlete/activities?after=${since}&per_page=100`);
+    let matched = 0;
+    acts.forEach(a => {
+      if (a.type !== 'Run') return;
+      const wd = weekDayFromDate(a.start_date_local);
+      if (!wd) return;
+      const k = dayKey(wd.week, wd.dayIdx);
+      const existing = mcmState.workouts[k];
+      // Don't overwrite a manual log that already has actualMiles.
+      if (existing?.source === 'manual' && existing?.actualMiles) return;
+      mcmState.workouts[k] = {
+        ...(existing || {}),
+        status: 'done',
+        actualMiles: +(a.distance / 1609.34).toFixed(2),
+        durationSec: a.elapsed_time,
+        notes: existing?.notes || a.name,
+        source: 'strava',
+        externalId: a.id,
+        loggedAt: new Date().toISOString(),
+      };
+      matched++;
+    });
+    mcmState.integrations.strava.lastSyncTs = Date.now();
+    saveState(mcmState);
+    if (typeof renderAll === 'function') renderAll();
+    renderSettings();
+    showToast(`Strava: ${matched} run${matched === 1 ? '' : 's'} matched`, 'success');
+  } catch (e) {
+    showToast('Strava sync failed: ' + e.message, 'warn');
+  }
+}
+
 function disconnectStrava() {
   mcmState.integrations.strava = { connected: false, athleteId: null, accessToken: null, refreshToken: null, expiresAt: null, lastSyncTs: null };
   saveState(mcmState);
   renderSettings();
+  showToast('Strava disconnected');
 }
 
-document.addEventListener('DOMContentLoaded', injectSettingsChrome);
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async () => {
+  injectSettingsChrome();
+  // OAuth callbacks land back on whatever page initiated them. Try both —
+  // each handler returns false fast if its state isn't in sessionStorage.
+  await handleFitbitCallback();
+  await handleStravaCallback();
+});
