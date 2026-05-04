@@ -215,6 +215,7 @@
     </div>
     <div class="nav-tabs">
       <a href="index.html" class="nav-tab">Today</a>
+      <a href="history.html" class="nav-tab">History</a>
       <a href="plan.html" class="nav-tab">Plan</a>
       <a href="exercises.html" class="nav-tab active">Strength</a>
       <a href="nutrition.html" class="nav-tab">Fuel</a>
@@ -344,11 +345,10 @@
 </main>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/integrations.js"></script>
 <script>
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const today = new Date();
-const days = Math.max(0, Math.floor((RACE_DATE - today) / (1000 * 60 * 60 * 24)));
-document.getElementById('ts-days').textContent = days;
+bindTopnavStats();
 
 function ytId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
@@ -386,5 +386,6 @@ document.getElementById('strength-grid').innerHTML = EXERCISES.strength.map(exCa
 document.getElementById('circuit-grid').innerHTML = EXERCISES.circuit.map(exCard).join('');
 document.getElementById('bands-grid').innerHTML = EXERCISES.bands.map(exCard).join('');
 </script>
+<nav class="bottomnav" id="bottomnav-mount" aria-label="Primary"></nav>
 </body>
 </html>

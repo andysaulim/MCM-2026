@@ -247,6 +247,7 @@
     </div>
     <div class="nav-tabs">
       <a href="index.html" class="nav-tab">Today</a>
+      <a href="history.html" class="nav-tab">History</a>
       <a href="plan.html" class="nav-tab">Plan</a>
       <a href="exercises.html" class="nav-tab">Strength</a>
       <a href="nutrition.html" class="nav-tab active">Fuel</a>
@@ -373,26 +374,15 @@
 
   <h2 class="section-title">Race-week food protocol</h2>
   <div class="card">
-    <table>
-      <thead><tr><th>Day</th><th>Focus</th><th>Avoid</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Mon Oct 19</strong></td><td>Hydration ramp begins. 100 oz/day.</td><td>Alcohol from this day forward.</td></tr>
-        <tr><td><strong>Tue Oct 20</strong></td><td>Normal eating. Continue hydrating.</td><td>—</td></tr>
-        <tr><td><strong>Wed Oct 21</strong></td><td>Begin moderate carb-load. <strong>Cut kimchi, spicy, raw vegetables from today.</strong></td><td>Fermented foods, spicy, fiber-heavy raw veg.</td></tr>
-        <tr><td><strong>Thu Oct 22</strong></td><td>~65% carbs. Pasta, rice, oats, bread, fruits.</td><td>New foods. New supplements. New restaurants.</td></tr>
-        <tr><td><strong>Fri Oct 23</strong></td><td>Aggressive carb-load. Up to 500g carbs. Smaller meals, more often.</td><td>Heavy fats, fried foods, dairy if any sensitivity.</td></tr>
-        <tr><td><strong>Sat Oct 24</strong></td><td>Final carb meal by 7 PM. White rice, plain pasta, white bread. Bed by 9 PM.</td><td>Anything new. Late dinner. Caffeine after noon.</td></tr>
-        <tr><td><strong>Sun Oct 25 — RACE DAY</strong></td><td>Wake 4:30 AM. Coffee + bagel + banana + honey by 5 AM. Sip water + electrolytes until 6:30 AM. Last gel 15 min before start.</td><td>Coffee after 6 AM. Anything fibrous. Anything new.</td></tr>
-      </tbody>
-    </table>
+    <p style="color: var(--text-dim); font-size: 13px;">The race-week day-by-day food protocol now lives on the <a href="race.html#fuel-protocol">Race page</a> alongside the timeline, fuel plan, and gear list — everything race-specific in one place.</p>
   </div>
 </main>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/integrations.js"></script>
 <script>
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
-document.getElementById('ts-days').textContent = days;
+bindTopnavStats();
 
 document.getElementById('smoothie-grid').innerHTML = SMOOTHIES.map(s => `
   <div class="smoothie-card">
@@ -428,5 +418,6 @@ document.getElementById('limit-food').innerHTML = RESTAURANT.limitOptions.map(f 
   </div>
 `).join('');
 </script>
+<nav class="bottomnav" id="bottomnav-mount" aria-label="Primary"></nav>
 </body>
 </html>

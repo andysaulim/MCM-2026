@@ -17,9 +17,26 @@ Goal: 4:08 marathon (9:28/mile pace) for Andy Lim. Built as a multi-page web app
 ## Tech notes
 
 - Pure HTML/CSS/vanilla JS. No build step. No framework. No npm.
-- State persists in `localStorage` (key: `mcm2026_andy`). Survives browser closes. Lives on the device.
-- Centralized data in `js/data.js` — change one place, all pages update.
-- Mobile-first design. Looks good pre-dawn on a phone.
+- State persists in `localStorage` (key: `mcm2026_andy`). Schema v2: every workout entry carries actual miles, time, RPE, felt, gels, notes, and source ('manual' / 'strava' / 'fitbit').
+- All pages share `js/state.js` (helpers, schema, bottom nav) and `js/integrations.js` (settings, export/import, Fitbit + Strava OAuth).
+- Mobile-first design with a fixed bottom tab bar below 700px.
+- **Always export from Settings before clearing site data or switching browsers** — localStorage is fragile.
+
+## Integrations (optional)
+
+### Fitbit (auto-fills weight + sleep)
+Browser-only OAuth using PKCE — no backend needed.
+1. Register a Personal app at https://dev.fitbit.com/apps/new (OAuth 2.0 Application Type: *Client*; Callback URL: your GitHub Pages URL).
+2. Paste the Client ID into `MCM_CONFIG.fitbit.clientId` in `js/integrations.js`.
+3. Settings → Connect Fitbit.
+
+### Strava (auto-fills runs)
+Strava's OAuth requires a server-side secret, so a tiny Cloudflare Worker proxies the token exchange. See `worker/README.md` for setup.
+
+1. Register at https://www.strava.com/settings/api (callback domain: `andysaulim.github.io`).
+2. Deploy the Worker (`worker/`) with `STRAVA_CLIENT_ID` + `STRAVA_CLIENT_SECRET` as secrets.
+3. Paste the Client ID and Worker URL into `MCM_CONFIG.strava` in `js/integrations.js`.
+4. Settings → Connect Strava.
 
 ## Deploy to GitHub Pages
 

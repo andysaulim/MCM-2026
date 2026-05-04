@@ -1,71 +1,9 @@
 // ============================================================
-// MCM 2026 — App logic
-// localStorage for persistence (works on GitHub Pages)
+// MCM 2026 — Today page renderer (uses js/state.js helpers)
 // ============================================================
 
-const START_DATE = new Date('2026-05-04T00:00:00');
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const STATE_KEY = 'mcm2026_andy';
-
-// ===== STATE MANAGEMENT =====
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STATE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    return { ...defaultState(), ...parsed };
-  } catch (e) { return defaultState(); }
-}
-function defaultState() {
-  return { done: {}, skip: {}, notes: {}, weights: [], sleep: [], extras: {} };
-}
-function saveState(s) {
-  try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) {}
-}
-let state = loadState();
 let viewWeek = 1;
 let noteContext = null;
-
-// ===== DATE MATH =====
-function todayDate() {
-  // For testing, can override here:
-  return new Date();
-}
-function getCurrentWeekDay() {
-  const today = todayDate();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(START_DATE); start.setHours(0, 0, 0, 0);
-  const diffMs = today - start;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { week: 1, dayIdx: 0, beforeStart: true };
-  if (diffDays >= 175) return { week: 25, dayIdx: 6, afterEnd: true };
-  return {
-    week: Math.floor(diffDays / 7) + 1,
-    dayIdx: diffDays % 7,
-    beforeStart: false,
-    afterEnd: false,
-  };
-}
-function daysToRace() {
-  const today = todayDate(); today.setHours(0, 0, 0, 0);
-  const race = new Date(RACE_DATE); race.setHours(0, 0, 0, 0);
-  return Math.floor((race - today) / (1000 * 60 * 60 * 24));
-}
-
-// ===== KEY HELPERS =====
-function dayKey(week, dayIdx) { return `w${week}d${dayIdx}`; }
-function isDone(wk, di) { return !!state.done[dayKey(wk, di)]; }
-function isSkipped(wk, di) { return !!state.skip[dayKey(wk, di)]; }
-function getExtras(wk, di) { return state.extras[dayKey(wk, di)] || {}; }
-
-// ===== TYPE HELPERS =====
-function typeClass(t) {
-  return ({ easy:'easy', quality:'quality', long:'long', strength:'strength', rest:'rest', tune:'tune', race:'race' })[t] || 'easy';
-}
-function typeName(t) {
-  return ({ easy:'Easy', quality:'Quality', long:'Long', strength:'Strength', rest:'Rest', tune:'Tune-up', race:'RACE' })[t] || t;
-}
-function whenClass(w) { return w === 'AM' ? 'when-am' : w === 'PM' ? 'when-pm' : 'when-rest'; }
 
 // ===== TODAY CARD =====
 function renderToday() {
@@ -73,18 +11,33 @@ function renderToday() {
   const wk = PLAN[cur.week - 1];
   const day = wk.days[cur.dayIdx];
   const t = typeClass(day.type);
-  const done = isDone(cur.week, cur.dayIdx);
+  const w = getWorkout(cur.week, cur.dayIdx);
+  const done = w.status === 'done';
+  const skipped = w.status === 'skip';
   const card = document.getElementById('today-card');
+  if (!card) return;
 
   let banner = '';
   if (cur.beforeStart) {
     const today = todayDate(); today.setHours(0,0,0,0);
     const start = new Date(START_DATE); start.setHours(0,0,0,0);
-    const daysUntil = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
-    const dayWord = daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
-    banner = `<div class="callout"><div class="callout-title">Plan starts ${dayWord}</div><p>Training begins Monday May 4. The Mon May 4 workout is shown below — get familiar with the structure before you start.</p></div>`;
+    const daysUntil = Math.ceil((start - today) / 86400000);
+    banner = `<div class="callout"><div class="callout-title">Plan starts ${daysUntil === 1 ? 'tomorrow' : 'in ' + daysUntil + ' days'}</div><p>Training begins Monday May 4. The Mon May 4 workout is shown below — get familiar with the structure before you start.</p></div>`;
+  } else if (cur.afterEnd) {
+    banner = `<div class="callout success"><div class="callout-title">Race complete</div><p>You crossed the line. Hope it went well.</p></div>`;
+  } else if (isRaceWeek()) {
+    const d = daysToRace();
+    banner = `
+      <div class="callout race-week">
+        <div class="callout-title">🏁 Race week — ${d === 0 ? 'today' : d + ' day' + (d === 1 ? '' : 's') + ' to go'}</div>
+        <p>Keep it boring. Sleep, hydrate, carb-load. Quick links:
+          <a href="race.html#fuel-protocol">food protocol</a> ·
+          <a href="race.html#timeline">timeline</a> ·
+          <a href="race.html#gear">gear checklist</a> ·
+          <a href="race.html#mental">mental scripts</a>
+        </p>
+      </div>`;
   }
-  if (cur.afterEnd) banner = `<div class="callout success"><div class="callout-title">Race complete</div><p>You crossed the line. Hope it went well.</p></div>`;
 
   // Workout structure rows
   let structureHTML = '';
@@ -128,33 +81,118 @@ function renderToday() {
         <span class="meta-val">${day.route}</span>
       </div>
     </div>
-    <div class="today-actions">
-      <button class="btn ${done ? 'btn-done' : 'btn-primary'}" onclick="toggleComplete(${cur.week}, ${cur.dayIdx})">
-        ${done ? '✓ Done' : 'Mark done'}
-      </button>
-      <button class="btn" onclick="toggleSkip(${cur.week}, ${cur.dayIdx})">${isSkipped(cur.week, cur.dayIdx) ? '✓ Skipped' : 'Skip'}</button>
-      <button class="btn" onclick="openNoteModal(${cur.week}, ${cur.dayIdx})">+ Note</button>
-    </div>
-    ${renderChecklist(cur.week, cur.dayIdx, day)}
+    ${renderRunLog(cur.week, cur.dayIdx, day, w, done, skipped)}
   `;
 }
 
-// ===== DAILY CHECKLIST =====
-function renderChecklist(wk, di, day) {
-  if (!day.extras || day.extras.length === 0) return '';
-  const extras = getExtras(wk, di);
-  const items = day.extras.map(ex => {
-    const isDone = !!extras[ex];
-    const cfg = ({
-      pushups: { icon: '💪', label: 'Pushups', detail: `Throughout the day · target ${PLAN[wk-1].pushups || 40} total` },
-      circuit: { icon: '🔄', label: 'Core + lower circuit', detail: '8–10 min · squats, bridges, planks, dead bugs' },
-      bands:   { icon: '🎗', label: 'Resistance bands', detail: '7 min · monster walks, lateral walks, clamshells' },
-    })[ex];
-    if (!cfg) return '';
+// ===== POST-RUN LOG =====
+function renderRunLog(wk, di, day, w, done, skipped) {
+  const isRest = day.type === 'rest';
+  if (isRest) {
     return `
-      <div class="check-item ${isDone ? 'done' : ''}" onclick="toggleExtra(${wk}, ${di}, '${ex}')">
+      <div class="run-log-rest">
+        <div class="today-actions">
+          <button class="btn ${done ? 'btn-done' : 'btn-primary'}" onclick="toggleStatus(${wk}, ${di}, 'done')">${done ? '✓ Marked done' : 'Mark rest done'}</button>
+          <button class="btn" onclick="openNoteModal(${wk}, ${di})">${w.notes ? '✎ Edit note' : '+ Note'}</button>
+        </div>
+        ${w.notes ? `<div class="run-log-note">📝 ${w.notes}</div>` : ''}
+      </div>
+    `;
+  }
+
+  const plannedMiles = day.workout?.total || '';
+  const plannedMin = day.timeMin || '';
+  const plannedTimeStr = plannedMin ? `${Math.floor(plannedMin / 60) || ''}${plannedMin >= 60 ? ':' : ''}${String(plannedMin % 60).padStart(plannedMin >= 60 ? 2 : 1, '0')}:00` : '';
+
+  const actualMiles = w.actualMiles ?? '';
+  const dur = w.durationSec ? secToHms(w.durationSec) : '';
+  const rpe = w.rpe ?? '';
+  const felt = w.felt || '';
+  const gels = w.gels ?? '';
+  const notes = w.notes || '';
+  const sourceTag = w.source && w.source !== 'manual' ? `<span class="run-log-source">via ${w.source}</span>` : '';
+
+  return `
+    <div class="run-log ${done ? 'is-done' : ''} ${skipped ? 'is-skipped' : ''}" data-wk="${wk}" data-di="${di}">
+      <div class="run-log-header">
+        <span class="run-log-title">${done ? '✓ Run logged' : skipped ? 'Skipped' : 'Log this run'}</span>
+        ${sourceTag}
+        ${done && w.actualMiles ? `<span class="run-log-summary">${w.actualMiles} mi · ${dur || '—'} · RPE ${rpe || '—'}</span>` : ''}
+      </div>
+      <div class="run-log-grid">
+        <label class="rl-field">
+          <span class="rl-lbl">Actual miles</span>
+          <input class="rl-input rl-miles" type="number" step="0.01" placeholder="${plannedMiles}" value="${actualMiles}" inputmode="decimal">
+        </label>
+        <label class="rl-field">
+          <span class="rl-lbl">Time (h:mm:ss)</span>
+          <input class="rl-input rl-time" type="text" placeholder="${plannedTimeStr || 'mm:ss'}" value="${dur}" inputmode="numeric">
+        </label>
+        <label class="rl-field">
+          <span class="rl-lbl">RPE 1–10</span>
+          <input class="rl-input rl-rpe" type="number" min="1" max="10" placeholder="6" value="${rpe}" inputmode="numeric">
+        </label>
+        <label class="rl-field">
+          <span class="rl-lbl">Felt</span>
+          <select class="rl-input rl-felt">
+            <option value="">—</option>
+            <option value="easy"      ${felt === 'easy'      ? 'selected' : ''}>Easy</option>
+            <option value="moderate"  ${felt === 'moderate'  ? 'selected' : ''}>Moderate</option>
+            <option value="hard"      ${felt === 'hard'      ? 'selected' : ''}>Hard</option>
+            <option value="shattered" ${felt === 'shattered' ? 'selected' : ''}>Shattered</option>
+          </select>
+        </label>
+        <label class="rl-field">
+          <span class="rl-lbl">Gels</span>
+          <input class="rl-input rl-gels" type="number" min="0" max="12" placeholder="0" value="${gels}" inputmode="numeric">
+        </label>
+        <label class="rl-field rl-field-wide">
+          <span class="rl-lbl">Notes (knee, fuel, weather…)</span>
+          <input class="rl-input rl-notes" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="How did it go?">
+        </label>
+      </div>
+      <div class="run-log-actions">
+        <button class="btn btn-primary" onclick="saveRunLog(${wk}, ${di})">${done ? 'Update run' : 'Save run'}</button>
+        <button class="btn ${skipped ? 'btn-done' : ''}" onclick="toggleStatus(${wk}, ${di}, 'skip')">${skipped ? '✓ Skipped' : 'Skip'}</button>
+        ${done ? `<button class="btn btn-skip" onclick="clearRunLog(${wk}, ${di})">Clear</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ===== MORNING CHECK-IN (weight + sleep + extras unified) =====
+function renderCheckIn() {
+  const root = document.getElementById('morning-checkin');
+  if (!root) return;
+  const cur = getCurrentWeekDay();
+  const day = PLAN[cur.week - 1].days[cur.dayIdx];
+  const extras = getExtras(cur.week, cur.dayIdx);
+
+  const lastWeight = mcmState.weights.length ? mcmState.weights[mcmState.weights.length - 1].lbs : null;
+  const startWeight = mcmState.weights.length ? mcmState.weights[0].lbs : (typeof RUNNER !== 'undefined' ? RUNNER.startWeight : 190);
+  const goalWeight = typeof RUNNER !== 'undefined' ? RUNNER.goalWeight : 173;
+  const lostLbs = lastWeight != null ? (startWeight - lastWeight) : null;
+
+  const lastSleep = mcmState.sleep.length ? mcmState.sleep[mcmState.sleep.length - 1].hrs : null;
+  const sleep7 = (() => {
+    const recent = mcmState.sleep.slice(-7);
+    if (!recent.length) return null;
+    return recent.reduce((s, x) => s + x.hrs, 0) / recent.length;
+  })();
+
+  const extraConfigs = {
+    pushups: { icon: '💪', label: 'Pushups',          detail: `${PLAN[cur.week - 1].pushups || 40} total · spread through the day` },
+    circuit: { icon: '🔄', label: 'Core circuit',     detail: '8–10 min · squats, bridges, planks, dead bugs' },
+    bands:   { icon: '🎗', label: 'Resistance bands', detail: '7 min · monster walks, lateral walks, clamshells' },
+  };
+  const extrasHTML = (day.extras || []).map(ex => {
+    const cfg = extraConfigs[ex];
+    if (!cfg) return '';
+    const isDone = !!extras[ex];
+    return `
+      <div class="check-item ${isDone ? 'done' : ''}" onclick="handleToggleExtra(${cur.week}, ${cur.dayIdx}, '${ex}')">
         <div class="check-box">${isDone ? '✓' : ''}</div>
-        <div class="check-icon t-${ex === 'pushups' ? 'tune' : ex === 'circuit' ? 'strength' : 'easy'}">${cfg.icon}</div>
+        <div class="check-icon">${cfg.icon}</div>
         <div class="check-content">
           <div class="check-label">${cfg.label}</div>
           <div class="check-detail">${cfg.detail}</div>
@@ -162,71 +200,128 @@ function renderChecklist(wk, di, day) {
       </div>
     `;
   }).join('');
-  return `
-    <div class="checklist">
-      <div class="checklist-title">Daily extras</div>
-      <div class="checklist-items">${items}</div>
+
+  root.innerHTML = `
+    <div class="checkin-header">
+      <h3>Morning check-in</h3>
+      <span class="checkin-date">${day.day} · ${day.date}</span>
     </div>
+    <div class="checkin-row">
+      <div class="checkin-label">
+        <span class="checkin-lbl-main">Weight</span>
+        <span class="checkin-lbl-sub">${lastWeight != null
+            ? `${lastWeight} lbs · ${lostLbs > 0 ? '−' + lostLbs.toFixed(1) : lostLbs < 0 ? '+' + Math.abs(lostLbs).toFixed(1) : '0'} since start · goal ${goalWeight}`
+            : `start ${startWeight} → goal ${goalWeight}`}</span>
+      </div>
+      <div class="checkin-input-row">
+        <input type="number" id="weight-input" placeholder="${lastWeight ?? startWeight}" step="0.1" inputmode="decimal" />
+        <button class="btn btn-primary" onclick="logWeight()">Log</button>
+      </div>
+    </div>
+    <div class="checkin-row">
+      <div class="checkin-label">
+        <span class="checkin-lbl-main">Sleep</span>
+        <span class="checkin-lbl-sub">${lastSleep != null
+            ? `last night ${lastSleep} hrs${sleep7 != null ? ` · 7-day avg ${sleep7.toFixed(1)}` : ''} · target 6.4`
+            : 'target 6.4 hrs'}</span>
+      </div>
+      <div class="checkin-input-row">
+        <input type="number" id="sleep-input" placeholder="${lastSleep ?? '6.5'}" step="0.1" inputmode="decimal" />
+        <button class="btn btn-primary" onclick="logSleep()">Log</button>
+      </div>
+    </div>
+    ${extrasHTML ? `
+      <div class="checkin-row checkin-extras">
+        <div class="checkin-label">
+          <span class="checkin-lbl-main">Today's extras</span>
+          <span class="checkin-lbl-sub">${(day.extras || []).length} items</span>
+        </div>
+        <div class="checklist-items">${extrasHTML}</div>
+      </div>
+    ` : ''}
   `;
 }
 
 // ===== TOP STATS + COUNTDOWN + PROGRESS =====
 function renderTopStats() {
   const days = daysToRace();
-  document.getElementById('cd-days').textContent = days >= 0 ? days : '0';
-  document.getElementById('ts-days').textContent = days >= 0 ? days : '0';
+  const cdEl = document.getElementById('cd-days');
+  if (cdEl) cdEl.textContent = days >= 0 ? days : '0';
 
-  // Total miles done
-  let totalDone = 0, totalPlanned = 0, completedCount = 0, totalCount = 0;
-  PLAN.forEach((wk, i) => {
-    wk.days.forEach((d, di) => {
-      if (d.type !== 'rest') totalCount++;
-      totalPlanned += d.workout?.total || 0;
-      if (isDone(i + 1, di)) {
-        if (d.type !== 'rest') completedCount++;
-        totalDone += d.workout?.total || 0;
-      }
-    });
-  });
-  document.getElementById('ts-miles').textContent = Math.round(totalDone);
-  document.getElementById('ps-miles').textContent = Math.round(totalDone);
-  const completionPct = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-  document.getElementById('ps-completion').textContent = completionPct + '%';
-  document.getElementById('ps-bar').style.width = completionPct + '%';
+  const totals = totalsAcrossPlan();
+  bindTopnavStats();
+
+  const psMiles = document.getElementById('ps-miles');
+  if (psMiles) psMiles.textContent = Math.round(totals.totalDone);
+
+  const completionPct = totals.totalCount === 0 ? 0 : Math.round((totals.completedCount / totals.totalCount) * 100);
+  const psComp = document.getElementById('ps-completion');
+  if (psComp) psComp.textContent = completionPct + '%';
+  const psBar = document.getElementById('ps-bar');
+  if (psBar) psBar.style.width = completionPct + '%';
 
   // Weight delta
-  if (state.weights.length > 0) {
-    const last = state.weights[state.weights.length - 1].lbs;
-    const start = state.weights[0].lbs;
-    const lost = (start - last).toFixed(1);
-    document.getElementById('ps-weight').textContent = lost > 0 ? '−' + lost : (lost < 0 ? '+' + Math.abs(lost) : '0');
-    document.getElementById('last-weight').textContent = `Last: ${last} lbs`;
-  } else {
-    document.getElementById('ps-weight').textContent = '—';
-    document.getElementById('last-weight').textContent = `Start: ${RUNNER.startWeight} lbs`;
+  const psWeight = document.getElementById('ps-weight');
+  if (psWeight) {
+    if (mcmState.weights.length > 0) {
+      const last = mcmState.weights[mcmState.weights.length - 1].lbs;
+      const start = mcmState.weights[0].lbs;
+      const lost = (start - last).toFixed(1);
+      psWeight.textContent = lost > 0 ? '−' + lost : (lost < 0 ? '+' + Math.abs(lost) : '0');
+    } else {
+      psWeight.textContent = '—';
+    }
   }
 
   // Sleep avg (last 7)
-  if (state.sleep.length > 0) {
-    const recent = state.sleep.slice(-7);
-    const avg = recent.reduce((s, x) => s + x.hrs, 0) / recent.length;
-    document.getElementById('ps-sleep').textContent = avg.toFixed(1);
-    const last = state.sleep[state.sleep.length - 1].hrs;
-    document.getElementById('last-sleep').textContent = `Last: ${last} hrs`;
-  } else {
-    document.getElementById('ps-sleep').textContent = '—';
-    document.getElementById('last-sleep').textContent = `Target: 6.4 hrs`;
+  const psSleep = document.getElementById('ps-sleep');
+  if (psSleep) {
+    if (mcmState.sleep.length > 0) {
+      const recent = mcmState.sleep.slice(-7);
+      const avg = recent.reduce((s, x) => s + x.hrs, 0) / recent.length;
+      psSleep.textContent = avg.toFixed(1);
+    } else {
+      psSleep.textContent = '—';
+    }
   }
+
+  // Streak: consecutive days back from today where status is done OR rest was respected (rest day passed)
+  const psStreak = document.getElementById('ps-streak');
+  if (psStreak) psStreak.textContent = computeStreak();
+}
+
+function computeStreak() {
+  const cur = getCurrentWeekDay();
+  if (cur.beforeStart) return 0;
+  let streak = 0;
+  let wk = cur.week, di = cur.dayIdx;
+  // Walk backwards from yesterday (today doesn't break the streak if not yet done)
+  di--;
+  if (di < 0) { wk--; di = 6; }
+  while (wk >= 1) {
+    const day = PLAN[wk - 1].days[di];
+    const w = getWorkout(wk, di);
+    const counted = day.type === 'rest' || w.status === 'done' || w.status === 'skip';
+    if (!counted) break;
+    streak++;
+    di--;
+    if (di < 0) { wk--; di = 6; }
+  }
+  return streak;
 }
 
 // ===== THIS WEEK STRIP =====
 function renderThisWeek() {
   const cur = getCurrentWeekDay();
   const wk = PLAN[cur.week - 1];
-  document.getElementById('thisweek-label').textContent = `Week ${cur.week} · ${wk.phase} · ${wk.miles} mi`;
-  document.getElementById('week-strip').innerHTML = wk.days.map((d, di) => {
+  const lbl = document.getElementById('thisweek-label');
+  if (lbl) lbl.textContent = `Week ${cur.week} · ${wk.phase} · ${wk.miles} mi`;
+  const strip = document.getElementById('week-strip');
+  if (!strip) return;
+  strip.innerHTML = wk.days.map((d, di) => {
     const isToday = di === cur.dayIdx;
-    const done = isDone(cur.week, di);
+    const w = getWorkout(cur.week, di);
+    const done = w.status === 'done';
     const t = typeClass(d.type);
     return `
       <a class="day-pill ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}" onclick="jumpToWeek(${cur.week}); event.preventDefault();" href="#week-detail">
@@ -242,7 +337,9 @@ function renderThisWeek() {
 // ===== WEEK NAV =====
 function renderWeekNav() {
   const cur = getCurrentWeekDay();
-  document.getElementById('week-nav').innerHTML = PLAN.map(wk => {
+  const nav = document.getElementById('week-nav');
+  if (!nav) return;
+  nav.innerHTML = PLAN.map(wk => {
     const isCurrent = wk.week === cur.week;
     const isPhase0 = wk.week <= 3;
     const allDone = wk.days.every((d, di) => d.type === 'rest' || isDone(wk.week, di));
@@ -259,10 +356,14 @@ function renderWeekDetail() {
 
   const dayRows = wk.days.map((d, di) => {
     const isToday = wk.week === cur.week && di === cur.dayIdx;
-    const done = isDone(wk.week, di);
-    const skipped = isSkipped(wk.week, di);
+    const w = getWorkout(wk.week, di);
+    const done = w.status === 'done';
+    const skipped = w.status === 'skip';
     const t = typeClass(d.type);
-    const note = state.notes[dayKey(wk.week, di)];
+    const note = w.notes;
+    const actualSummary = (done && w.actualMiles)
+      ? `<div class="dr-actual">${w.actualMiles} mi${w.durationSec ? ` · ${secToHms(w.durationSec)}` : ''}${w.rpe ? ` · RPE ${w.rpe}` : ''}${w.felt ? ` · ${w.felt}` : ''}</div>`
+      : '';
     return `
       <div class="day-row ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}">
         <div class="dr-day"><span class="dr-day-name">${d.day}</span><span class="dr-day-date">${d.date}</span></div>
@@ -274,11 +375,12 @@ function renderWeekDetail() {
         <div class="dr-content">
           <div class="dr-title">${d.title}</div>
           <div class="dr-desc">${d.desc}${note ? '<br><em style="color:var(--accent);">📝 ' + note + '</em>' : ''}</div>
+          ${actualSummary}
         </div>
         <div class="dr-pace">${d.workout?.total ? d.workout.total + ' mi' : ''}<br><span style="color:var(--text-faint);font-size:11px;">${d.pace !== '—' ? d.pace : ''}</span></div>
         <div class="dr-actions">
-          <button class="dr-btn done-btn ${done ? 'is-active' : ''}" onclick="toggleComplete(${wk.week}, ${di})" title="Done">✓</button>
-          <button class="dr-btn skip-btn ${skipped ? 'is-active' : ''}" onclick="toggleSkip(${wk.week}, ${di})" title="Skip">⊘</button>
+          <button class="dr-btn done-btn ${done ? 'is-active' : ''}" onclick="toggleStatus(${wk.week}, ${di}, 'done')" title="Done">✓</button>
+          <button class="dr-btn skip-btn ${skipped ? 'is-active' : ''}" onclick="toggleStatus(${wk.week}, ${di}, 'skip')" title="Skip">⊘</button>
           <button class="dr-btn" onclick="openNoteModal(${wk.week}, ${di})" title="Note">✎</button>
         </div>
       </div>
@@ -302,39 +404,57 @@ function renderWeekDetail() {
 }
 
 // ===== INTERACTIONS =====
-function toggleComplete(wk, di) {
-  const k = dayKey(wk, di);
-  if (state.done[k]) delete state.done[k]; else { state.done[k] = true; delete state.skip[k]; }
-  saveState(state);
+function toggleStatus(wk, di, status) {
+  const result = setWorkoutStatus(wk, di, status);
   renderAll();
-  showToast(state.done[k] ? '✓ Marked done' : 'Done removed', 'success');
+  showToast(result === 'done' ? '✓ Marked done' : result === 'skip' ? 'Marked skipped' : 'Status cleared', result ? 'success' : '');
 }
-function toggleSkip(wk, di) {
-  const k = dayKey(wk, di);
-  if (state.skip[k]) delete state.skip[k]; else { state.skip[k] = true; delete state.done[k]; }
-  saveState(state);
+function saveRunLog(wk, di) {
+  const root = document.querySelector(`.run-log[data-wk="${wk}"][data-di="${di}"]`);
+  if (!root) return;
+  const miles = parseFloat(root.querySelector('.rl-miles').value) || null;
+  const dur = hmsToSec(root.querySelector('.rl-time').value);
+  const rpe = parseInt(root.querySelector('.rl-rpe').value, 10) || null;
+  const felt = root.querySelector('.rl-felt').value || null;
+  const gels = parseInt(root.querySelector('.rl-gels').value, 10) || 0;
+  const notes = root.querySelector('.rl-notes').value.trim();
+
+  if (rpe != null && (rpe < 1 || rpe > 10)) { showToast('RPE must be 1–10', 'warn'); return; }
+
+  logRun(wk, di, {
+    actualMiles: miles,
+    durationSec: dur || null,
+    rpe, felt, gels, notes,
+    source: 'manual',
+  });
   renderAll();
-  showToast(state.skip[k] ? 'Marked skipped' : 'Skip removed');
+  showToast('Run saved ✓', 'success');
 }
-function toggleExtra(wk, di, ex) {
+function clearRunLog(wk, di) {
   const k = dayKey(wk, di);
-  if (!state.extras[k]) state.extras[k] = {};
-  state.extras[k][ex] = !state.extras[k][ex];
-  saveState(state);
-  renderToday();
+  delete mcmState.workouts[k];
+  saveState(mcmState);
+  renderAll();
+  showToast('Run cleared');
+}
+function handleToggleExtra(wk, di, ex) {
+  toggleExtra(wk, di, ex);
+  renderCheckIn();
+  renderTopStats();
 }
 function jumpToWeek(n) {
   viewWeek = n;
   renderWeekNav();
   renderWeekDetail();
   const target = document.getElementById('week-detail');
-  if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (target?.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function openNoteModal(wk, di) {
   noteContext = { wk, di };
   const day = PLAN[wk - 1].days[di];
+  const w = getWorkout(wk, di);
   document.getElementById('note-context').textContent = `${day.day}, ${day.date} · ${day.title}`;
-  document.getElementById('note-text').value = state.notes[dayKey(wk, di)] || '';
+  document.getElementById('note-text').value = w.notes || '';
   document.getElementById('note-modal').classList.add('open');
 }
 function closeNoteModal() {
@@ -343,10 +463,8 @@ function closeNoteModal() {
 }
 function saveNote() {
   if (!noteContext) return;
-  const text = document.getElementById('note-text').value.trim();
-  const k = dayKey(noteContext.wk, noteContext.di);
-  if (text) state.notes[k] = text; else delete state.notes[k];
-  saveState(state);
+  const text = document.getElementById('note-text').value;
+  setNote(noteContext.wk, noteContext.di, text);
   closeNoteModal();
   renderAll();
   showToast('Note saved', 'success');
@@ -354,10 +472,11 @@ function saveNote() {
 function logWeight() {
   const inp = document.getElementById('weight-input');
   const val = parseFloat(inp.value);
-  if (!val || val < 100 || val > 300) { showToast('Enter a valid weight', 'warn'); return; }
-  state.weights.push({ date: new Date().toISOString(), lbs: val });
-  saveState(state);
+  if (!val || val < 100 || val > 300) { showToast('Enter a valid weight (100–300)', 'warn'); return; }
+  mcmState.weights.push({ date: new Date().toISOString(), lbs: val, source: 'manual' });
+  saveState(mcmState);
   inp.value = '';
+  renderCheckIn();
   renderTopStats();
   showToast(`Logged ${val} lbs`, 'success');
 }
@@ -365,22 +484,18 @@ function logSleep() {
   const inp = document.getElementById('sleep-input');
   const val = parseFloat(inp.value);
   if (!val || val < 1 || val > 14) { showToast('Enter hours (1–14)', 'warn'); return; }
-  state.sleep.push({ date: new Date().toISOString(), hrs: val });
-  saveState(state);
+  mcmState.sleep.push({ date: new Date().toISOString(), hrs: val, source: 'manual' });
+  saveState(mcmState);
   inp.value = '';
+  renderCheckIn();
   renderTopStats();
   showToast(`Logged ${val} hrs`, 'success');
-}
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type ? ' ' + type : '');
-  setTimeout(() => t.className = 'toast', 2400);
 }
 
 // ===== INIT =====
 function renderAll() {
   renderToday();
+  renderCheckIn();
   renderTopStats();
   renderThisWeek();
   renderWeekNav();
@@ -390,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
   viewWeek = getCurrentWeekDay().week;
   renderAll();
 });
-// Modal close on background click
 document.addEventListener('click', e => {
   if (e.target.id === 'note-modal') closeNoteModal();
 });

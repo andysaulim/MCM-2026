@@ -237,6 +237,7 @@
     </div>
     <div class="nav-tabs">
       <a href="index.html" class="nav-tab">Today</a>
+      <a href="history.html" class="nav-tab">History</a>
       <a href="plan.html" class="nav-tab active">Plan</a>
       <a href="exercises.html" class="nav-tab">Strength</a>
       <a href="nutrition.html" class="nav-tab">Fuel</a>
@@ -276,21 +277,12 @@
 </main>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/integrations.js"></script>
 <script>
-const START_DATE = new Date('2026-05-04T00:00:00');
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
-document.getElementById('ts-days').textContent = days;
-
-function getCurrentWeek() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = new Date(START_DATE); start.setHours(0,0,0,0);
-  const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 0;
-  if (diffDays >= 175) return 26;
-  return Math.floor(diffDays / 7) + 1;
-}
-const currentWeek = getCurrentWeek();
+bindTopnavStats();
+const currentWeekInfo = getCurrentWeekDay();
+const currentWeek = currentWeekInfo.beforeStart ? 0 : (currentWeekInfo.afterEnd ? 26 : currentWeekInfo.week);
 
 // Mileage chart
 const maxMiles = Math.max(...PLAN.map(w => w.miles));
@@ -362,5 +354,6 @@ document.getElementById('phases').innerHTML = phaseGroups.map(group => {
   `;
 }).join('');
 </script>
+<nav class="bottomnav" id="bottomnav-mount" aria-label="Primary"></nav>
 </body>
 </html>
