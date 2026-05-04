@@ -95,7 +95,7 @@ function renderRunLog(wk, di, day, w, done, skipped) {
           <button class="btn ${done ? 'btn-done' : 'btn-primary'}" onclick="toggleStatus(${wk}, ${di}, 'done')">${done ? '✓ Marked done' : 'Mark rest done'}</button>
           <button class="btn" onclick="openNoteModal(${wk}, ${di})">${w.notes ? '✎ Edit note' : '+ Note'}</button>
         </div>
-        ${w.notes ? `<div class="run-log-note">📝 ${w.notes}</div>` : ''}
+        ${w.notes ? `<div class="run-log-note">📝 ${escapeHtml(w.notes)}</div>` : ''}
       </div>
     `;
   }
@@ -125,8 +125,8 @@ function renderRunLog(wk, di, day, w, done, skipped) {
           <input class="rl-input rl-miles" type="number" step="0.01" placeholder="${plannedMiles}" value="${actualMiles}" inputmode="decimal">
         </label>
         <label class="rl-field">
-          <span class="rl-lbl">Time (h:mm:ss)</span>
-          <input class="rl-input rl-time" type="text" placeholder="${plannedTimeStr || 'mm:ss'}" value="${dur}" inputmode="numeric">
+          <span class="rl-lbl">Time</span>
+          <input class="rl-input rl-time" type="text" placeholder="${plannedTimeStr || '1h 30m'}" value="${dur}" inputmode="text" autocapitalize="none">
         </label>
         <label class="rl-field">
           <span class="rl-lbl">RPE 1–10</span>
@@ -148,7 +148,7 @@ function renderRunLog(wk, di, day, w, done, skipped) {
         </label>
         <label class="rl-field rl-field-wide">
           <span class="rl-lbl">Notes (knee, fuel, weather…)</span>
-          <input class="rl-input rl-notes" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="How did it go?">
+          <input class="rl-input rl-notes" type="text" value="${escapeHtml(notes)}" placeholder="How did it go?">
         </label>
       </div>
       <div class="run-log-actions">
@@ -301,7 +301,8 @@ function computeStreak() {
   while (wk >= 1) {
     const day = PLAN[wk - 1].days[di];
     const w = getWorkout(wk, di);
-    const counted = day.type === 'rest' || w.status === 'done' || w.status === 'skip';
+    // Skips don't maintain a streak — only completed runs and scheduled rest days do.
+    const counted = day.type === 'rest' || w.status === 'done';
     if (!counted) break;
     streak++;
     di--;
@@ -323,8 +324,11 @@ function renderThisWeek() {
     const w = getWorkout(cur.week, di);
     const done = w.status === 'done';
     const t = typeClass(d.type);
+    const status = done ? 'completed' : isToday ? 'today, not yet done' : 'pending';
     return `
-      <a class="day-pill ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}" onclick="jumpToWeek(${cur.week}); event.preventDefault();" href="#week-detail">
+      <a class="day-pill ${isToday ? 'is-today' : ''} ${done ? 'is-done' : ''}"
+         aria-label="${d.day} ${d.date}, ${typeName(d.type)}, ${status}"
+         onclick="jumpToWeek(${cur.week}); event.preventDefault();" href="#week-detail">
         <div class="dp-day">${d.day}</div>
         <div class="dp-date">${d.date.split(' ')[1]}</div>
         <div class="dp-bar bar-${t}"></div>
@@ -374,7 +378,7 @@ function renderWeekDetail() {
         </div>
         <div class="dr-content">
           <div class="dr-title">${d.title}</div>
-          <div class="dr-desc">${d.desc}${note ? '<br><em style="color:var(--accent);">📝 ' + note + '</em>' : ''}</div>
+          <div class="dr-desc">${d.desc}${note ? '<br><em style="color:var(--accent);">📝 ' + escapeHtml(note) + '</em>' : ''}</div>
           ${actualSummary}
         </div>
         <div class="dr-pace">${d.workout?.total ? d.workout.total + ' mi' : ''}<br><span style="color:var(--text-faint);font-size:11px;">${d.pace !== '—' ? d.pace : ''}</span></div>
