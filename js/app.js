@@ -23,8 +23,21 @@ function renderToday() {
     const start = new Date(START_DATE); start.setHours(0,0,0,0);
     const daysUntil = Math.ceil((start - today) / 86400000);
     banner = `<div class="callout"><div class="callout-title">Plan starts ${daysUntil === 1 ? 'tomorrow' : 'in ' + daysUntil + ' days'}</div><p>Training begins Monday May 4. The Mon May 4 workout is shown below — get familiar with the structure before you start.</p></div>`;
+  } else if (cur.afterEnd) {
+    banner = `<div class="callout success"><div class="callout-title">Race complete</div><p>You crossed the line. Hope it went well.</p></div>`;
+  } else if (isRaceWeek()) {
+    const d = daysToRace();
+    banner = `
+      <div class="callout race-week">
+        <div class="callout-title">🏁 Race week — ${d === 0 ? 'today' : d + ' day' + (d === 1 ? '' : 's') + ' to go'}</div>
+        <p>Keep it boring. Sleep, hydrate, carb-load. Quick links:
+          <a href="race.html#fuel-protocol">food protocol</a> ·
+          <a href="race.html#timeline">timeline</a> ·
+          <a href="race.html#gear">gear checklist</a> ·
+          <a href="race.html#mental">mental scripts</a>
+        </p>
+      </div>`;
   }
-  if (cur.afterEnd) banner = `<div class="callout success"><div class="callout-title">Race complete</div><p>You crossed the line. Hope it went well.</p></div>`;
 
   // Workout structure rows
   let structureHTML = '';

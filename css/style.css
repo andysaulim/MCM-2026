@@ -575,10 +575,56 @@ input.rl-miles, input.rl-time, input.rl-rpe, input.rl-gels { font-family: var(--
   .checkin-input-row input { width: 110px; }
 }
 
+.callout.race-week {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(239, 68, 68, 0.06));
+  border-color: rgba(249, 115, 22, 0.4);
+  margin-bottom: 16px;
+}
+.callout.race-week .callout-title { color: var(--accent); }
+.callout.race-week a { color: var(--accent); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+/* ===== BOTTOM NAV (mobile only) ===== */
+.bottomnav { display: none; }
+@media (max-width: 700px) {
+  .bottomnav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(13, 17, 23, 0.95);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-soft);
+    padding: 6px 4px calc(env(safe-area-inset-bottom, 0px) + 6px);
+    z-index: 100;
+  }
+  .bn-tab {
+    flex: 1;
+    padding: 8px 2px;
+    text-align: center;
+    color: var(--text-faint);
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 8px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .bn-tab.is-active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .nav-tabs { display: none; }
+  main { padding-bottom: 88px; }
+  .topnav { padding: 10px 14px; }
+  .topnav-inner { gap: 10px; }
+  .brand-sub { display: none; }
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .topnav { padding: 12px 16px; }
-  .nav-stats { display: none; }
+  .nav-stats { font-size: 12px; }
   main { padding: 20px 16px 80px; }
   .page-title { font-size: 28px; }
   h1 { font-size: 26px; }

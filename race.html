@@ -301,7 +301,23 @@
   <h2 class="section-title">The course · mile-by-mile</h2>
   <div id="course-list"></div>
 
-  <h2 class="section-title">Race-day timeline</h2>
+  <h2 class="section-title" id="fuel-protocol">Race-week food protocol</h2>
+  <div class="split-table" style="margin-bottom: 32px;">
+    <table>
+      <thead><tr><th>Day</th><th>Focus</th><th>Avoid</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Mon Oct 19</strong></td><td>Hydration ramp begins. 100 oz/day.</td><td>Alcohol from this day forward.</td></tr>
+        <tr><td><strong>Tue Oct 20</strong></td><td>Normal eating. Continue hydrating.</td><td>—</td></tr>
+        <tr><td><strong>Wed Oct 21</strong></td><td>Begin moderate carb-load. <strong>Cut kimchi, spicy, raw vegetables from today.</strong></td><td>Fermented foods, spicy, fiber-heavy raw veg.</td></tr>
+        <tr><td><strong>Thu Oct 22</strong></td><td>~65% carbs. Pasta, rice, oats, bread, fruits.</td><td>New foods. New supplements. New restaurants.</td></tr>
+        <tr><td><strong>Fri Oct 23</strong></td><td>Aggressive carb-load. Up to 500g carbs. Smaller meals, more often.</td><td>Heavy fats, fried foods, dairy if any sensitivity.</td></tr>
+        <tr><td><strong>Sat Oct 24</strong></td><td>Final carb meal by 7 PM. White rice, plain pasta, white bread. Bed by 9 PM.</td><td>Anything new. Late dinner. Caffeine after noon.</td></tr>
+        <tr><td><strong>Sun Oct 25 — RACE DAY</strong></td><td>Wake 4:30 AM. Coffee + bagel + banana + honey by 5 AM. Sip water + electrolytes until 6:30 AM. Last gel 15 min before start.</td><td>Coffee after 6 AM. Anything fibrous. Anything new.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section-title" id="timeline">Race-day timeline</h2>
   <div class="card" style="padding: 0;">
     <div class="timeline-item">
       <div class="timeline-time">4:30 AM</div>
@@ -390,7 +406,7 @@
     <p>Every gel in this plan is something you've taken on long runs. Race day is not the day to try a new flavor, brand, or caffeine level. GI distress at mile 18 ends a marathon faster than the wall does.</p>
   </div>
 
-  <h2 class="section-title" style="margin-top: 32px;">Gear checklist</h2>
+  <h2 class="section-title" id="gear" style="margin-top: 32px;">Gear checklist</h2>
   <div class="checklist-grid">
     <div class="gear-card">
       <div class="gear-card-title"><div class="gear-card-icon">👟</div>On the body</div>
@@ -440,7 +456,7 @@
     </div>
   </div>
 
-  <h2 class="section-title" style="margin-top: 32px;">Mental scripts for the dark miles</h2>
+  <h2 class="section-title" id="mental" style="margin-top: 32px;">Mental scripts for the dark miles</h2>
   <div class="card">
     <h3 style="margin-bottom: 16px;">Mile 18–22: when the body asks if you can do this</h3>
     <p style="color: var(--text-dim); margin-bottom: 18px;">Every marathoner has a scripted answer ready. You wrote yours during the long runs. Choose three. Use them in rotation. Say them out loud if you have to.</p>
@@ -476,5 +492,6 @@ document.getElementById('course-list').innerHTML = COURSE.map(c => {
   `;
 }).join('');
 </script>
+<nav class="bottomnav" id="bottomnav-mount" aria-label="Primary"></nav>
 </body>
 </html>

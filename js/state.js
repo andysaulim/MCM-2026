@@ -180,3 +180,22 @@ function bindTopnavStats() {
   const tsMiles = document.getElementById('ts-miles');
   if (tsMiles) tsMiles.textContent = Math.round(totalsAcrossPlan().totalDone);
 }
+
+// ===== BOTTOM NAV (mobile) =====
+const NAV_TABS = [
+  { href: 'index.html',     label: 'Today' },
+  { href: 'history.html',   label: 'History' },
+  { href: 'plan.html',      label: 'Plan' },
+  { href: 'exercises.html', label: 'Strength' },
+  { href: 'nutrition.html', label: 'Fuel' },
+  { href: 'race.html',      label: 'Race' },
+];
+function renderBottomNav() {
+  const mount = document.getElementById('bottomnav-mount');
+  if (!mount) return;
+  const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  mount.innerHTML = NAV_TABS.map(t =>
+    `<a href="${t.href}" class="bn-tab${t.href === path ? ' is-active' : ''}">${t.label}</a>`
+  ).join('');
+}
+document.addEventListener('DOMContentLoaded', renderBottomNav);
