@@ -346,7 +346,7 @@ function computeStreak() {
   while (wk >= 1) {
     const day = PLAN[wk - 1].days[di];
     const w = getWorkout(wk, di);
-    const counted = day.type === 'rest' || w.status === 'done' || w.status === 'skip';
+    const counted = day.type === 'rest' || w.status === 'done';
     if (!counted) break;
     streak++;
     di--;
@@ -510,7 +510,7 @@ if (recentRuns.length === 0) {
             ${isStrava ? '<span class="rc-source">strava</span>' : ''}
           </div>
           <div class="rc-stats">${stats.join(' · ') || 'logged · no details'}</div>
-          ${w.notes ? `<div class="rc-notes">📝 ${w.notes}</div>` : ''}
+          ${w.notes ? `<div class="rc-notes">📝 ${escapeHtml(w.notes)}</div>` : ''}
         </div>
         <div>
           ${w.rpe ? `<div class="rc-rpe ${w.felt || ''}">${w.rpe}</div><div class="rc-rpe-lbl">RPE</div>` : '<div class="rc-rpe">—</div><div class="rc-rpe-lbl">RPE</div>'}

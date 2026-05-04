@@ -26,25 +26,60 @@ function defaultState() {
 }
 
 function migrate(raw) {
-  if (!raw) return defaultState();
-  if (raw.schemaVersion === SCHEMA_VERSION) return { ...defaultState(), ...raw };
+  if (!raw || typeof raw !== 'object') return defaultState();
+  const safe = defaultState();
+
+  // v2 path — copy fields with type guards so a hand-edited or partially-corrupt
+  // import doesn't blow up renders.
+  if (raw.schemaVersion === SCHEMA_VERSION) {
+    if (raw.workouts && typeof raw.workouts === 'object' && !Array.isArray(raw.workouts)) {
+      safe.workouts = raw.workouts;
+    }
+    if (raw.extras && typeof raw.extras === 'object' && !Array.isArray(raw.extras)) {
+      safe.extras = raw.extras;
+    }
+    if (Array.isArray(raw.weights)) {
+      safe.weights = raw.weights.filter(w => w && typeof w.lbs === 'number' && w.date);
+    }
+    if (Array.isArray(raw.sleep)) {
+      safe.sleep = raw.sleep.filter(s => s && typeof s.hrs === 'number' && s.date);
+    }
+    if (raw.pain && typeof raw.pain === 'object' && !Array.isArray(raw.pain)) {
+      safe.pain = raw.pain;
+    }
+    if (raw.integrations && typeof raw.integrations === 'object') {
+      safe.integrations.fitbit = { ...safe.integrations.fitbit, ...(raw.integrations.fitbit || {}) };
+      safe.integrations.strava = { ...safe.integrations.strava, ...(raw.integrations.strava || {}) };
+    }
+    return safe;
+  }
 
   // v1 → v2: collapse done/skip/notes into workouts[k]
-  const v2 = defaultState();
-  v2.extras  = raw.extras  || {};
-  v2.weights = (raw.weights || []).map(w => ({ ...w, source: w.source || 'manual' }));
-  v2.sleep   = (raw.sleep   || []).map(s => ({ ...s, source: s.source || 'manual' }));
-
-  const keys = new Set([...Object.keys(raw.done || {}), ...Object.keys(raw.skip || {}), ...Object.keys(raw.notes || {})]);
+  if (raw.extras && typeof raw.extras === 'object') safe.extras = raw.extras;
+  if (Array.isArray(raw.weights)) {
+    safe.weights = raw.weights
+      .filter(w => w && typeof w.lbs === 'number' && w.date)
+      .map(w => ({ ...w, source: w.source || 'manual' }));
+  }
+  if (Array.isArray(raw.sleep)) {
+    safe.sleep = raw.sleep
+      .filter(s => s && typeof s.hrs === 'number' && s.date)
+      .map(s => ({ ...s, source: s.source || 'manual' }));
+  }
+  const keys = new Set([
+    ...Object.keys(raw.done  || {}),
+    ...Object.keys(raw.skip  || {}),
+    ...Object.keys(raw.notes || {}),
+  ]);
   for (const k of keys) {
-    v2.workouts[k] = {
+    safe.workouts[k] = {
       status: raw.done?.[k] ? 'done' : (raw.skip?.[k] ? 'skip' : null),
-      notes: raw.notes?.[k] || '',
+      notes: typeof raw.notes?.[k] === 'string' ? raw.notes[k] : '',
       source: 'manual',
       loggedAt: null,
     };
   }
-  return v2;
+  return safe;
 }
 
 function loadState() {
@@ -55,7 +90,23 @@ function loadState() {
   } catch (e) { return defaultState(); }
 }
 function saveState(s) {
-  try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) {}
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(s));
+  } catch (e) {
+    // QuotaExceeded, private mode, etc. — surface it so the user can export.
+    console.warn('mcm: state save failed', e);
+    showToast('Save failed — Settings → Export now', 'warn');
+  }
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Mutable singleton — every page reads/writes the same object.
@@ -128,11 +179,23 @@ function secToHms(sec) {
 }
 function hmsToSec(str) {
   if (!str) return 0;
-  const parts = str.trim().split(':').map(p => parseInt(p, 10));
+  const s = String(str).trim().toLowerCase();
+  if (!s) return 0;
+
+  // "1h 30m 15s" / "1h 30m" / "30m" / "1h" — pick out h/m/s tokens.
+  if (/[hms]/.test(s)) {
+    const h = +(s.match(/(\d+(?:\.\d+)?)\s*h/) || [, 0])[1];
+    const m = +(s.match(/(\d+(?:\.\d+)?)\s*m/) || [, 0])[1];
+    const sec = +(s.match(/(\d+(?:\.\d+)?)\s*s/) || [, 0])[1];
+    return Math.round(h * 3600 + m * 60 + sec);
+  }
+
+  // "1:30:00" / "30:00" / "90"  (bare number = minutes)
+  const parts = s.split(':').map(p => parseFloat(p));
   if (parts.some(isNaN)) return 0;
-  if (parts.length === 1) return parts[0] * 60;
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 1) return Math.round(parts[0] * 60);
+  if (parts.length === 2) return Math.round(parts[0] * 60 + parts[1]);
+  return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]);
 }
 function paceFromMilesAndSec(miles, sec) {
   if (!miles || !sec) return '';

@@ -579,29 +579,29 @@ input.rl-miles, input.rl-time, input.rl-rpe, input.rl-gels { font-family: var(--
 .settings-btn {
   display: grid;
   place-items: center;
-  width: 36px; height: 36px;
-  border-radius: 9px;
+  width: 40px; height: 40px;
+  border-radius: 10px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
   color: var(--text-dim);
   flex-shrink: 0;
   transition: color 0.15s, background 0.15s;
 }
-.settings-btn:hover { color: var(--accent); background: var(--card-hover); }
+.settings-btn:hover, .settings-btn:focus-visible { color: var(--accent); background: var(--card-hover); outline: none; }
 .modal-wide { max-width: 640px; }
 .modal-head {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 18px;
 }
 .modal-close {
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1;
   color: var(--text-faint);
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
   display: grid; place-items: center;
-  border-radius: 8px;
+  border-radius: 10px;
 }
-.modal-close:hover { color: var(--text); background: var(--bg-elev); }
+.modal-close:hover, .modal-close:focus-visible { color: var(--text); background: var(--bg-elev); outline: none; }
 .settings-section {
   margin-bottom: 28px;
   padding-bottom: 24px;
