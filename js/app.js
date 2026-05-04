@@ -60,6 +60,17 @@ function renderToday() {
     `;
   }
 
+  // "Why this workout" — purpose + effort + cue, especially helpful for noobs
+  const phil = WORKOUT_PURPOSE[day.type];
+  const purposeHTML = phil ? `
+    <div class="workout-purpose">
+      <div class="wp-row"><span class="wp-lbl">Effort</span><span class="wp-val">${escapeHtml(phil.effort)}</span></div>
+      <div class="wp-row"><span class="wp-lbl">Why</span><span class="wp-val">${escapeHtml(phil.purpose)}</span></div>
+      <div class="wp-row"><span class="wp-lbl">Cue</span><span class="wp-val">${escapeHtml(phil.cue)}</span></div>
+      ${phil.talk_test !== '—' ? `<div class="wp-row"><span class="wp-lbl">Talk test</span><span class="wp-val">${escapeHtml(phil.talk_test)}</span></div>` : ''}
+    </div>
+  ` : '';
+
   card.innerHTML = `
     ${banner}
     <div class="today-meta">
@@ -81,7 +92,48 @@ function renderToday() {
         <span class="meta-val">${day.route}</span>
       </div>
     </div>
+    ${purposeHTML}
     ${renderRunLog(cur.week, cur.dayIdx, day, w, done, skipped)}
+  `;
+}
+
+// ===== TODAY'S SCHEDULE (wake → workout → meals → bed) =====
+function renderSchedule() {
+  const root = document.getElementById('today-schedule');
+  if (!root) return;
+  const cur = getCurrentWeekDay();
+  const wk = PLAN[cur.week - 1];
+  const day = wk.days[cur.dayIdx];
+  const items = buildDailySchedule(day, wk);
+  const gear = buildDailyGear(day);
+
+  root.innerHTML = `
+    <h2 class="section-title">
+      <span>Today's schedule</span>
+      <span class="section-title-rt">${day.day} · ${day.date} · template — adjust to your real life</span>
+    </h2>
+    <div class="schedule-card">
+      <div class="schedule-list">
+        ${items.map(it => `
+          <div class="sched-row">
+            <div class="sched-time">${escapeHtml(it.time)}</div>
+            <div class="sched-icon">${it.icon}</div>
+            <div class="sched-body">
+              <div class="sched-title">${escapeHtml(it.title)}</div>
+              <div class="sched-detail">${escapeHtml(it.detail)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      ${gear ? `
+        <div class="schedule-gear">
+          <div class="sg-title">Gear for today</div>
+          <ul class="sg-list">
+            ${gear.map(g => `<li>${escapeHtml(g)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -500,6 +552,7 @@ function logSleep() {
 function renderAll() {
   renderToday();
   renderCheckIn();
+  renderSchedule();
   renderTopStats();
   renderThisWeek();
   renderWeekNav();
