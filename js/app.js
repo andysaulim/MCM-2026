@@ -107,8 +107,12 @@ function renderTodayRing() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const wToday = mcmState.weights.some(x => (x.date || '').startsWith(todayStr));
   const sToday = mcmState.sleep.some(x => (x.date || '').startsWith(todayStr));
+  const hyd = getHydration(todayKey());
+  const hydTarget = hydrationTargetForDay(day);
+  const hydDone = hyd * 8 >= hydTarget;
   items.push({ key: 'weight', label: 'Weight', done: wToday });
   items.push({ key: 'sleep', label: 'Sleep', done: sToday });
+  items.push({ key: 'water', label: 'Water', done: hydDone });
 
   const doneCount = items.filter(i => i.done).length;
   const totalCount = items.length;
@@ -580,6 +584,26 @@ function renderCheckIn() {
         <button class="btn btn-primary" onclick="logSleep()">Log</button>
       </div>
     </div>
+    ${(() => {
+      const dateKey = todayKey();
+      const glasses = getHydration(dateKey);
+      const oz = glasses * 8;
+      const target = hydrationTargetForDay(day);
+      const pct = Math.min(100, Math.round((oz / target) * 100));
+      return `
+      <div class="checkin-row hydration-row">
+        <div class="checkin-label">
+          <span class="checkin-lbl-main">Water</span>
+          <span class="checkin-lbl-sub">${oz} of ${target} oz · ${glasses} glass${glasses === 1 ? '' : 'es'} (8 oz each)</span>
+          <div class="hydration-bar"><div class="hydration-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="checkin-input-row hydration-buttons">
+          <button class="btn btn-primary" onclick="hydrationAdd()">+ 8 oz</button>
+          ${glasses > 0 ? `<button class="btn" onclick="hydrationRemove()" title="undo">−</button>` : ''}
+        </div>
+      </div>
+      `;
+    })()}
     ${extrasHTML ? `
       <div class="checkin-row checkin-extras">
         <div class="checkin-label">
@@ -856,6 +880,17 @@ function logSleep() {
   renderCheckIn();
   renderTopStats();
   showToast(`Logged ${val} hrs`, 'success');
+}
+
+function hydrationAdd() {
+  addGlass(todayKey());
+  renderCheckIn();
+  renderTodayRing();
+}
+function hydrationRemove() {
+  removeGlass(todayKey());
+  renderCheckIn();
+  renderTodayRing();
 }
 
 // ===== INIT =====

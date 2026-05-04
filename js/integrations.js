@@ -93,7 +93,24 @@ function renderSettings() {
   // works well. The OAuth code below stays in place if anyone ever wants
   // to re-enable it.
 
+  const prefs = getUserPrefs();
   body.innerHTML = `
+    <section class="settings-section">
+      <h3 class="settings-h">Schedule times</h3>
+      <p class="settings-hint" style="margin-bottom:14px;">Customize the daily schedule. Times shown 12-hr; pickers use 24-hr. Pre-run snacks auto-shift 30-45 min before each run.</p>
+      <div class="prefs-grid">
+        <label class="pref-row"><span class="pref-lbl">Wake</span><input type="time" data-pref="wakeTime" value="${prefs.wakeTime}"></label>
+        <label class="pref-row"><span class="pref-lbl">AM run</span><input type="time" data-pref="amRunTime" value="${prefs.amRunTime}"></label>
+        <label class="pref-row"><span class="pref-lbl">PM run (Mon/Fri)</span><input type="time" data-pref="pmRunTime" value="${prefs.pmRunTime}"></label>
+        <label class="pref-row"><span class="pref-lbl">Coffee cutoff</span><input type="time" data-pref="coffeeCutoff" value="${prefs.coffeeCutoff}"></label>
+        <label class="pref-row"><span class="pref-lbl">Sleep</span><input type="time" data-pref="sleepTime" value="${prefs.sleepTime}"></label>
+      </div>
+      <div class="settings-actions" style="margin-top:14px;">
+        <button class="btn btn-primary" onclick="savePrefsFromForm()">Save schedule</button>
+        <button class="btn btn-skip" onclick="resetPrefsAndReload()">Reset to defaults</button>
+      </div>
+    </section>
+
     <section class="settings-section">
       <h3 class="settings-h">Data</h3>
       <div class="settings-stats">
@@ -155,6 +172,23 @@ function clearAllData() {
   localStorage.removeItem(STATE_KEY);
   showToast('Data cleared · reloading');
   setTimeout(() => location.reload(), 800);
+}
+
+// ===== SCHEDULE PREFS HANDLERS =====
+function savePrefsFromForm() {
+  document.querySelectorAll('[data-pref]').forEach(el => {
+    const k = el.getAttribute('data-pref');
+    const v = el.value;
+    if (v) savePref(k, v); else savePref(k, null);
+  });
+  showToast('Schedule saved · reloading');
+  setTimeout(() => location.reload(), 600);
+}
+function resetPrefsAndReload() {
+  if (!confirm('Reset all schedule times to the original defaults?')) return;
+  resetPrefs();
+  showToast('Schedule reset · reloading');
+  setTimeout(() => location.reload(), 600);
 }
 
 // ============================================================

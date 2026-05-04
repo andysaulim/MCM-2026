@@ -256,6 +256,33 @@
     <p class="page-subtitle">Three weeks rebuilding base, then 22 weeks structured. Long run climbs from 5 mi to 18 mi, peaks at 36 mpw in week 19, drops to a tune-up half on Sep 20, then a three-week taper into race day.</p>
   </div>
 
+  <div class="view-toggle">
+    <button class="vt-btn active" id="vt-weeks" onclick="setPlanView('weeks')">Week cards</button>
+    <button class="vt-btn" id="vt-calendar" onclick="setPlanView('calendar')">Month grid</button>
+  </div>
+
+  <div id="view-calendar" style="display:none;">
+    <div class="cal-nav">
+      <button class="cal-prev" onclick="calMonth(-1)" aria-label="Previous month">‹</button>
+      <span class="cal-month-name" id="cal-month-name">—</span>
+      <button class="cal-next" onclick="calMonth(1)" aria-label="Next month">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <span class="cal-l"><span class="cal-dot t-easy"></span>Easy</span>
+      <span class="cal-l"><span class="cal-dot t-quality"></span>Quality</span>
+      <span class="cal-l"><span class="cal-dot t-long"></span>Long</span>
+      <span class="cal-l"><span class="cal-dot t-strength"></span>Strength</span>
+      <span class="cal-l"><span class="cal-dot t-tune"></span>Tune-up</span>
+      <span class="cal-l"><span class="cal-dot t-race"></span>Race</span>
+      <span class="cal-l"><span class="cal-dot t-rest"></span>Rest</span>
+    </div>
+  </div>
+
+  <div id="view-weeks">
   <div class="mileage-chart">
     <div class="chart-header">
       <div class="chart-title">Weekly mileage arc</div>
@@ -274,6 +301,7 @@
   </div>
 
   <div id="phases"></div>
+  </div><!-- /#view-weeks -->
 </main>
 
 <script src="js/data.js"></script>
@@ -309,6 +337,94 @@ const phaseGroups = [
   { name: 'Phase 4 — Taper', desc: 'Volume drops 25 → 50 → 65%. Intensity stays. Sharpen, rest, carb-load. The hard work is already done.', weeks: [22, 23, 24] },
   { name: 'Race Week', desc: 'Hydration ramp, carb load, mental rehearsal. Howitzer at 7:55 AM Sunday October 25.', weeks: [25] },
 ];
+
+// ===== CALENDAR (MONTH GRID) =====
+const TRAINING_MONTHS = [
+  { name: 'May 2026',       month: 4, year: 2026 },
+  { name: 'June 2026',      month: 5, year: 2026 },
+  { name: 'July 2026',      month: 6, year: 2026 },
+  { name: 'August 2026',    month: 7, year: 2026 },
+  { name: 'September 2026', month: 8, year: 2026 },
+  { name: 'October 2026',   month: 9, year: 2026 },
+];
+let calMonthIdx = (() => {
+  const today = new Date();
+  if (today.getFullYear() !== 2026) return 0;
+  const idx = TRAINING_MONTHS.findIndex(m => m.month === today.getMonth());
+  return Math.max(0, idx);
+})();
+
+function planForDate(dateObj) {
+  const start = new Date(2026, 4, 4); start.setHours(0,0,0,0);
+  const target = new Date(dateObj); target.setHours(0,0,0,0);
+  const diff = Math.floor((target - start) / 86400000);
+  if (diff < 0 || diff >= 175) return null;
+  const week = Math.floor(diff / 7) + 1;
+  const dayIdx = diff % 7;
+  return { week, dayIdx, day: PLAN[week - 1].days[dayIdx] };
+}
+
+function renderCalendar() {
+  const m = TRAINING_MONTHS[calMonthIdx];
+  document.getElementById('cal-month-name').textContent = m.name;
+
+  const firstOfMonth = new Date(m.year, m.month, 1);
+  const lastOfMonth  = new Date(m.year, m.month + 1, 0);
+  const startOffset  = firstOfMonth.getDay();
+  const daysInMonth  = lastOfMonth.getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cells = [];
+
+  for (let i = 0; i < startOffset; i++) cells.push({ kind: 'pad' });
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(m.year, m.month, d);
+    const info = planForDate(date);
+    const isToday = date.getTime() === today.getTime();
+    if (!info) {
+      cells.push({ kind: 'date', date: d, day: null, isToday });
+    } else {
+      const w = mcmState.workouts[`w${info.week}d${info.dayIdx}`] || {};
+      cells.push({ kind: 'date', date: d, day: info.day, week: info.week, isToday, done: w.status === 'done', skipped: w.status === 'skip' });
+    }
+  }
+
+  document.getElementById('cal-grid').innerHTML = cells.map(c => {
+    if (c.kind === 'pad') return '<div class="cal-cell pad"></div>';
+    if (!c.day) return `<div class="cal-cell empty${c.isToday ? ' is-today' : ''}"><div class="cal-date">${c.date}</div></div>`;
+    const t = typeClass(c.day.type);
+    const miles = c.day.workout?.total || 0;
+    const milesStr = miles > 0 ? `${miles}mi` : c.day.type === 'rest' ? 'rest' : '';
+    return `<div class="cal-cell t-${t}${c.isToday ? ' is-today' : ''}${c.done ? ' is-done' : ''}${c.skipped ? ' is-skipped' : ''}"
+              onclick="jumpToWeekFromCal(${c.week})"
+              title="${c.day.day} ${escapeHtml(c.day.title)}">
+      <div class="cal-date">${c.date}</div>
+      <div class="cal-mi">${escapeHtml(milesStr)}</div>
+      ${c.done ? '<div class="cal-mark">✓</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function calMonth(delta) {
+  calMonthIdx = Math.max(0, Math.min(TRAINING_MONTHS.length - 1, calMonthIdx + delta));
+  renderCalendar();
+}
+
+function jumpToWeekFromCal(week) {
+  setPlanView('weeks');
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.week-card');
+    if (cards[week - 1]) cards[week - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+function setPlanView(view) {
+  document.getElementById('view-weeks').style.display = view === 'weeks' ? '' : 'none';
+  document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
+  document.getElementById('vt-weeks').classList.toggle('active', view === 'weeks');
+  document.getElementById('vt-calendar').classList.toggle('active', view === 'calendar');
+  if (view === 'calendar') renderCalendar();
+}
 
 document.getElementById('phases').innerHTML = phaseGroups.map(group => {
   const weeksHTML = group.weeks.map(n => {

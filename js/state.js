@@ -18,11 +18,67 @@ function defaultState() {
     weights:  [],   // [{ date, lbs, source }]
     sleep:    [],   // [{ date, hrs, source }]
     pain:     {},   // { 'w5d2': { area, level, notes } }
+    hydration: {},  // { 'YYYY-MM-DD': numberOf8ozGlasses }
+    userPrefs: {},  // overrides on top of DEFAULT_PREFS (24h "HH:MM" times)
     integrations: {
       strava: { connected: false, athleteId: null, accessToken: null, refreshToken: null, expiresAt: null, lastSyncTs: null },
       fitbit: { connected: false, userId: null,    accessToken: null, refreshToken: null, expiresAt: null, lastSyncTs: null },
     },
   };
+}
+
+// ===== USER SCHEDULE PREFERENCES =====
+// Times stored as 24h "HH:MM" strings. Editable in Settings → Schedule.
+const DEFAULT_PREFS = {
+  wakeTime:      '05:30',
+  amRunTime:     '06:30',
+  pmRunTime:     '19:30',
+  coffeeCutoff:  '16:00',
+  sleepTime:     '00:30',
+};
+function getUserPrefs() {
+  return { ...DEFAULT_PREFS, ...(mcmState.userPrefs || {}) };
+}
+function savePref(key, value) {
+  if (!mcmState.userPrefs) mcmState.userPrefs = {};
+  if (value == null || value === '') delete mcmState.userPrefs[key];
+  else mcmState.userPrefs[key] = value;
+  saveState(mcmState);
+}
+function resetPrefs() {
+  mcmState.userPrefs = {};
+  saveState(mcmState);
+}
+// ===== HYDRATION (8-oz glasses per day) =====
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function getHydration(dateKey) {
+  return (mcmState.hydration && mcmState.hydration[dateKey]) || 0;
+}
+function addGlass(dateKey) {
+  if (!mcmState.hydration) mcmState.hydration = {};
+  mcmState.hydration[dateKey] = (mcmState.hydration[dateKey] || 0) + 1;
+  saveState(mcmState);
+}
+function removeGlass(dateKey) {
+  if (!mcmState.hydration) mcmState.hydration = {};
+  mcmState.hydration[dateKey] = Math.max(0, (mcmState.hydration[dateKey] || 0) - 1);
+  saveState(mcmState);
+}
+function hydrationTargetForDay(day) {
+  // Restaurant days run hot — 120 oz, others 100 oz.
+  return ['Tue', 'Wed', 'Thu', 'Sat', 'Sun'].includes(day.day) ? 120 : 100;
+}
+
+function fmt12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return hhmm;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
 function migrate(raw) {
@@ -303,29 +359,50 @@ function buildDailySchedule(day, week) {
   const isMonOrFri = ['Mon', 'Fri'].includes(dow);
 
   // User preference: night run on Mon + Fri (the only evenings entirely off restaurant).
-  // Strength stays AM (Thursday is restaurant night; not relevant on Mon/Fri but keep rule).
   const userPrefersNightRun = isMonOrFri && !isRest && !isStrength;
   const runWhen = userPrefersNightRun ? 'PM' : day.when;
   const runIsAM = runWhen === 'AM' && !isRest;
   const runIsPM = runWhen === 'PM' && !isRest;
 
+  // Customizable times (24h, formatted to 12h on display)
+  const prefs = getUserPrefs();
+  const wakeT  = fmt12(prefs.wakeTime);
+  const amRunT = fmt12(prefs.amRunTime);
+  const pmRunT = fmt12(prefs.pmRunTime);
+  const coffeeT = fmt12(prefs.coffeeCutoff);
+  const sleepT = fmt12(prefs.sleepTime);
+
+  // Snack-before-run computed as "30-45 min before the run" for cleanliness
+  function offsetTime(hhmm, minutes) {
+    const [h, m] = hhmm.split(':').map(Number);
+    let total = h * 60 + m + minutes;
+    total = (total + 1440) % 1440;
+    return fmt12(`${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
+  }
+  const longRunPreT  = offsetTime(prefs.amRunTime, -45);
+  const qualityPreT  = offsetTime(prefs.amRunTime, -30);
+  const easyPreT     = offsetTime(prefs.amRunTime, -30);
+  const pmRunPreT    = offsetTime(prefs.pmRunTime, -30);
+  const pmRunPostT   = offsetTime(prefs.pmRunTime, 60);
+  const windDownT    = offsetTime(prefs.sleepTime, -60);
+
   const items = [];
 
   // ===== MORNING =====
-  items.push({ time: '5:30 AM', icon: '☀️', title: 'Wake + 16 oz water', detail: 'Hydrate first thing. Bathroom.' });
+  items.push({ time: wakeT, icon: '☀️', title: 'Wake + 16 oz water', detail: 'Hydrate first thing. Bathroom.' });
 
   if (runIsAM) {
     if (isLong) {
-      items.push({ time: '5:45 AM', icon: '🍌', title: 'Pre-long-run breakfast', detail: 'Banana + 1 slice toast with honey + coffee · ~250 cal · 60 min before.' });
+      items.push({ time: longRunPreT, icon: '🍌', title: 'Pre-long-run breakfast', detail: 'Banana + 1 slice toast with honey + coffee · ~250 cal · 45 min before.' });
     } else if (isQuality) {
-      items.push({ time: '6:00 AM', icon: '🍌', title: 'Light pre-run', detail: 'Banana or 2 dates + small coffee · ~150 cal · 30 min before.' });
+      items.push({ time: qualityPreT, icon: '🍌', title: 'Light pre-run', detail: 'Banana or 2 dates + small coffee · ~150 cal · 30 min before.' });
     } else if (t === 'easy') {
-      items.push({ time: '6:00 AM', icon: '☕', title: 'Coffee + sip water', detail: 'Easy runs are fine fasted · ~50 cal.' });
+      items.push({ time: easyPreT, icon: '☕', title: 'Coffee + sip water', detail: 'Easy runs are fine fasted · ~50 cal.' });
     } else if (isStrength) {
-      items.push({ time: '6:00 AM', icon: '🥚', title: 'Pre-strength snack', detail: 'Greek yogurt + berries · ~200 cal · 20g protein.' });
+      items.push({ time: easyPreT, icon: '🥚', title: 'Pre-strength snack', detail: 'Greek yogurt + berries · ~200 cal · 20g protein.' });
     }
 
-    items.push({ time: '6:30 AM', icon: isStrength ? '🏋️' : '👟', title: day.title, detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace !== '—' ? day.pace : 'Form first'}` });
+    items.push({ time: amRunT, icon: isStrength ? '🏋️' : '👟', title: day.title, detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace !== '—' ? day.pace : 'Form first'}` });
 
     if (isLong && totalMi >= 10) {
       const gels = Math.max(1, Math.floor((totalMi - 4) / 4));
@@ -353,7 +430,7 @@ function buildDailySchedule(day, week) {
   const earlyShift = isRestaurantNight && restaurant.start === '3:00 PM';
   const lunchTime  = earlyShift ? '12:00 PM' : '12:30 PM';
   const midWater   = earlyShift ? '1:30 PM'  : '3:00 PM';
-  const coffeeCut  = earlyShift ? '2:00 PM'  : '4:00 PM';
+  const coffeeCut  = earlyShift ? '2:00 PM'  : coffeeT;
   items.push({ time: '9:00 AM',  icon: '💧', title: '16 oz water', detail: 'Refill bottle. Sip through morning.' });
   items.push({ time: lunchTime,  icon: '🍽', title: 'Lunch',       detail: 'Vegetarian + balanced · ~600 cal · 30g+ protein.' });
   items.push({ time: midWater,   icon: '💧', title: '16 oz water', detail: 'Mid-afternoon hydration check.' });
@@ -370,9 +447,9 @@ function buildDailySchedule(day, week) {
   } else if (runIsPM) {
     // Mon / Fri night run — only fits when restaurant is off
     items.push({ time: '5:30 PM', icon: '🚗', title: 'Off work, head home',  detail: 'Commute home. Drink water on the way.' });
-    items.push({ time: '7:00 PM', icon: '🍌', title: 'Pre-run snack',         detail: 'Banana or 1 slice toast + PB · ~200 cal · 30 min before run.' });
-    items.push({ time: '7:30 PM', icon: '👟', title: day.title,               detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
-    items.push({ time: '8:30 PM', icon: '🥤', title: 'Recovery + late dinner', detail: 'Smoothie within 30 min of run, then dinner · ~700 cal total · vegetarian + protein.' });
+    items.push({ time: pmRunPreT, icon: '🍌', title: 'Pre-run snack',         detail: 'Banana or 1 slice toast + PB · ~200 cal · 30 min before run.' });
+    items.push({ time: pmRunT,    icon: '👟', title: day.title,               detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
+    items.push({ time: pmRunPostT, icon: '🥤', title: 'Recovery + late dinner', detail: 'Smoothie within 30 min of run, then dinner · ~700 cal total · vegetarian + protein.' });
   } else {
     // Mon / Fri rest day or Sat/Sun without restaurant (shouldn't hit since Sat/Sun are restaurants now)
     items.push({ time: '5:30 PM', icon: '🚗', title: 'Off work, head home', detail: 'Commute home.' });
@@ -383,14 +460,14 @@ function buildDailySchedule(day, week) {
     items.push({ time: '8:30 PM', icon: '💧', title: '16 oz water', detail: 'Last big water — taper before bed.' });
   }
 
-  // ===== WIND-DOWN + SLEEP (12:30 AM) =====
+  // ===== WIND-DOWN + SLEEP (sleep time editable) =====
   const sleepNote = isRestaurantNight
-    ? 'Tonight is restaurant — accept the short night, ~5 hrs.'
+    ? 'Tonight is restaurant — accept the short night.'
     : runIsPM
-      ? 'Aim 7+ tonight (no late shift, easier to bank sleep).'
-      : 'Aim 7+ tonight.';
-  items.push({ time: '11:30 PM', icon: '🌙', title: 'Wind down', detail: 'Magnesium glycinate (300–400 mg) · lights down · phone night mode.' });
-  items.push({ time: '12:30 AM', icon: '🛏', title: 'Bed',       detail: `Target 5+ hrs nightly. ${sleepNote}` });
+      ? 'No late shift — aim 7+ hrs tonight.'
+      : 'Aim 7+ hrs tonight.';
+  items.push({ time: windDownT, icon: '🌙', title: 'Wind down', detail: 'Magnesium glycinate (300–400 mg) · lights down · phone night mode.' });
+  items.push({ time: sleepT,    icon: '🛏', title: 'Bed',       detail: `Target 5+ hrs nightly. ${sleepNote}` });
 
   return items;
 }
