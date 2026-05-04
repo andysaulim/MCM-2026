@@ -217,6 +217,126 @@ function showToast(msg, type) {
   setTimeout(() => t.className = 'toast', 2400);
 }
 
+// ===== WORKOUT PURPOSE (the noob "what am I actually doing here") =====
+const WORKOUT_PURPOSE = {
+  easy: {
+    effort: 'Conversational',
+    purpose: 'Builds your aerobic engine. 80% of marathon training is this. Boring is the point.',
+    cue: 'If you can\'t speak full sentences, slow down. Easy is a discipline, not a default.',
+    talk_test: 'Talk freely · breathe through nose if possible',
+  },
+  quality: {
+    effort: 'Comfortably hard',
+    purpose: 'Pushes your lactate threshold up — the speed you can hold for an hour gets faster.',
+    cue: 'Short phrases only. Watch your form when you start to fatigue.',
+    talk_test: '3-4 word phrases · steady deep breathing',
+  },
+  long: {
+    effort: 'Sustainable / steady',
+    purpose: 'Builds endurance and teaches your body to burn fat for fuel. The cornerstone session.',
+    cue: 'Start slower than you think. Practice fueling like race day.',
+    talk_test: 'Full sentences · slightly heavier breathing',
+  },
+  strength: {
+    effort: 'Form first, weight second',
+    purpose: 'Prevents injury and holds posture in the late race miles. Don\'t skip.',
+    cue: 'No grinding reps. Stop a rep before form breaks.',
+    talk_test: '—',
+  },
+  rest: {
+    effort: 'Actually rest',
+    purpose: 'Adaptation happens during rest, not during the run. Resting is training.',
+    cue: 'No "easy 3 miles." Walking is fine. Stretch if you want.',
+    talk_test: '—',
+  },
+  tune: {
+    effort: 'Race effort',
+    purpose: 'Calibration day. Tune-up half is a dress rehearsal — pacing, fueling, and gear.',
+    cue: 'Treat as a hard workout, not all-out. Save 5%. Mistakes here are free.',
+    talk_test: 'Few-word phrases · race-day rhythm',
+  },
+  race: {
+    effort: 'Race day',
+    purpose: 'Why we did all this.',
+    cue: 'Negative split. Trust the training.',
+    talk_test: '—',
+  },
+};
+
+// ===== DAILY SCHEDULE (today, from wake to sleep) =====
+function buildDailySchedule(day, week) {
+  const t = day.type;
+  const isAM = day.when === 'AM';
+  const isPM = day.when === 'PM';
+  const isLong = t === 'long' || t === 'race';
+  const isQuality = t === 'quality';
+  const isRest = t === 'rest';
+  const isStrength = t === 'strength';
+  const totalMi = day.workout?.total || 0;
+  const items = [];
+
+  items.push({ time: '5:30 AM', icon: '☀️', title: 'Wake + 16 oz water', detail: 'Hydrate before anything else. Bathroom.' });
+
+  if (isAM && isLong) {
+    items.push({ time: '5:45 AM', icon: '🍌', title: 'Pre-long-run breakfast', detail: 'Banana + 1 slice toast with honey + coffee. ~250 cal, ~60 min before.' });
+  } else if (isAM && isQuality) {
+    items.push({ time: '6:00 AM', icon: '🍌', title: 'Light pre-run', detail: 'Banana or 2 dates + small coffee. ~150 cal, ~30 min before.' });
+  } else if (isAM && t === 'easy') {
+    items.push({ time: '6:00 AM', icon: '☕', title: 'Coffee + sip water', detail: 'Easy runs are fine fasted. Just hydrate.' });
+  } else if (isAM && isStrength) {
+    items.push({ time: '6:00 AM', icon: '🥚', title: 'Light pre-strength', detail: 'Greek yogurt + berries (optional but helpful for compound lifts).' });
+  } else if (isRest) {
+    items.push({ time: '6:30 AM', icon: '☕', title: 'Coffee + breakfast', detail: 'Rest day — eat normally. Pushups + circuit only if scheduled.' });
+  }
+
+  if (!isRest && isAM) {
+    items.push({ time: '6:30 AM', icon: isStrength ? '🏋️' : '👟', title: day.title, detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace !== '—' ? day.pace : 'Form first'}` });
+    if (isLong && totalMi >= 10) {
+      const gels = Math.max(1, Math.floor((totalMi - 4) / 4));
+      items.push({ time: 'During run', icon: '🍯', title: 'Practice race fuel', detail: `~${gels} gel${gels > 1 ? 's' : ''} (every ~30 min after mile 4) + sip water.` });
+    } else if (isLong) {
+      items.push({ time: 'During run', icon: '💧', title: 'Sip water', detail: 'No gels needed at this distance. Hydrate.' });
+    }
+  }
+
+  if (!isRest && !isStrength && isAM) {
+    items.push({ time: '~30 min after', icon: '🥤', title: 'Recovery smoothie', detail: 'Recovery Smoothie (Fuel page). 30g carbs + 20g protein in the window.' });
+  } else if (isStrength && isAM) {
+    items.push({ time: '~30 min after', icon: '🥤', title: 'Protein recovery', detail: 'Whey shake or Greek yogurt + berries. 20–25g protein.' });
+  }
+
+  items.push({ time: '12:30 PM', icon: '🍽', title: 'Lunch', detail: 'Vegetarian + balanced. Aim for 30g+ protein. See Fuel page for ideas.' });
+  items.push({ time: '2:00 PM', icon: '☕', title: 'Last coffee', detail: 'Cut caffeine by 2 PM to protect tonight\'s sleep.' });
+
+  if (isPM && !isRest) {
+    items.push({ time: '4:30 PM', icon: '🍌', title: 'Pre-run snack', detail: 'Banana or 1 slice toast with PB. ~200 cal, 30 min before.' });
+    items.push({ time: '5:00 PM', icon: isStrength ? '🏋️' : '👟', title: day.title, detail: `${totalMi ? totalMi + ' mi · ' : ''}${day.pace}` });
+  }
+
+  items.push({ time: '5:00 PM', icon: '🍜', title: 'Restaurant shift starts', detail: 'Smart eating from kitchen perks (Fuel → Restaurant guide).' });
+  items.push({ time: '9:30 PM', icon: '🌙', title: 'Wind down', detail: 'Magnesium glycinate. Lights down. No screens after 10 PM.' });
+  items.push({ time: '10:00 PM', icon: '🛏', title: 'Bed', detail: 'Target 6.5+ hours. Sleep is when the training sticks.' });
+
+  return items;
+}
+
+// ===== TODAY'S GEAR HINT =====
+function buildDailyGear(day) {
+  const t = day.type;
+  const totalMi = day.workout?.total || 0;
+  if (t === 'rest') return null;
+  if (t === 'strength') return ['Lifting shoes (or flat-soled)', 'Towel', 'Resistance bands', 'Water bottle'];
+  const gear = ['Running shoes', 'GPS watch (charged)', 'Shorts + breathable top'];
+  if (totalMi >= 6) gear.push('Body Glide (nipples + inner thighs)');
+  if (totalMi >= 8) gear.push('Handheld water bottle or fuel belt');
+  if (totalMi >= 10) {
+    const gels = Math.max(1, Math.floor((totalMi - 4) / 4));
+    gear.push(`${gels} gel${gels > 1 ? 's' : ''}`);
+  }
+  if (totalMi >= 14) gear.push('Salt tabs (if hot)');
+  return gear;
+}
+
 // ===== AGGREGATE STATS (used by topnav on every page) =====
 function totalsAcrossPlan() {
   let totalDone = 0, completedCount = 0, totalCount = 0, totalPlanned = 0;

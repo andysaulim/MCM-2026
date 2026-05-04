@@ -405,6 +405,120 @@ input:focus, textarea:focus {
 .text-accent { color: var(--accent); }
 .muted { opacity: 0.5; }
 
+/* ===== WORKOUT PURPOSE (inside today card) ===== */
+.workout-purpose {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  position: relative;
+}
+.wp-row {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  padding: 4px 0;
+  align-items: baseline;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.wp-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.wp-val { color: var(--text-dim); }
+
+/* ===== TODAY'S SCHEDULE ===== */
+.schedule-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 22px 24px;
+  margin-bottom: 32px;
+}
+.schedule-list { display: flex; flex-direction: column; }
+.sched-row {
+  display: grid;
+  grid-template-columns: 100px 32px 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+  align-items: baseline;
+}
+.sched-row:last-child { border-bottom: none; }
+.sched-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.sched-icon {
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+}
+.sched-body { min-width: 0; }
+.sched-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.sched-detail {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.schedule-gear {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.sg-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.sg-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px;
+  margin: 0; padding: 0;
+}
+.sg-list li {
+  font-size: 13px;
+  color: var(--text);
+  padding-left: 18px;
+  position: relative;
+  line-height: 1.5;
+}
+.sg-list li::before {
+  content: '☐';
+  position: absolute;
+  left: 0;
+  color: var(--text-faint);
+}
+
+@media (max-width: 700px) {
+  .sched-row { grid-template-columns: 84px 28px 1fr; gap: 10px; }
+  .sched-time { font-size: 10px; }
+  .wp-row { grid-template-columns: 64px 1fr; gap: 8px; }
+}
+
 /* ===== POST-RUN LOG (today card) ===== */
 .run-log {
   margin-top: 18px;
