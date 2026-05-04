@@ -132,6 +132,99 @@ function renderTodayRing() {
     </div>`;
 }
 
+// ===== ANOMALY ALERTS (auto-banner) =====
+function renderAnomalies() {
+  const root = document.getElementById('anomaly-alerts');
+  if (!root) return;
+  const alerts = detectAnomalies();
+  if (!alerts.length) { root.innerHTML = ''; return; }
+  root.innerHTML = alerts.map(a => `
+    <div class="anomaly">
+      <span class="an-icon">${a.icon}</span>
+      <div class="an-text">
+        <div class="an-title">${escapeHtml(a.title)}</div>
+        <div class="an-detail">${escapeHtml(a.text)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== RECOVERY SCORE (in today card hero) =====
+function renderRecovery() {
+  const root = document.getElementById('recovery-card');
+  if (!root) return;
+  const r = recoveryScore();
+  if (r.signals === 0) {
+    root.innerHTML = `
+      <div class="rec-card rec-empty">
+        <div class="rec-num">—</div>
+        <div class="rec-text">
+          <div class="rec-title">Recovery</div>
+          <div class="rec-detail">Log sleep + a recent run to see today's readiness.</div>
+        </div>
+      </div>`;
+    return;
+  }
+  const tier = r.score >= 80 ? 'great' : r.score >= 60 ? 'good' : r.score >= 40 ? 'tired' : 'depleted';
+  root.innerHTML = `
+    <div class="rec-card rec-${tier}">
+      <div class="rec-num">${r.score}</div>
+      <div class="rec-text">
+        <div class="rec-title">Recovery · <span class="rec-status">${escapeHtml(r.status)}</span></div>
+        <div class="rec-detail">${escapeHtml(r.recommendation)}</div>
+        <div class="rec-reasons">${r.reasons.map(x => escapeHtml(x)).join(' · ')}</div>
+      </div>
+    </div>`;
+}
+
+// ===== PREDICTED MARATHON TIME (next to countdown) =====
+function renderPrediction() {
+  const root = document.getElementById('prediction-card');
+  if (!root) return;
+  const p = predictedMarathonTime();
+  if (!p) {
+    root.innerHTML = `
+      <h3>Predicted finish</h3>
+      <div class="pred-num">—</div>
+      <div class="pred-sub">Log a few runs and a projection appears here.</div>`;
+    return;
+  }
+  const targetSec = 4 * 3600 + 8 * 60;
+  const delta = p.sec - targetSec;
+  const deltaStr = delta === 0 ? 'on target' : delta > 0 ? `+${secToHms(delta)} over goal` : `${secToHms(-delta)} under goal`;
+  const tone = delta <= 60 ? 'on-target' : delta <= 600 ? 'close' : 'far';
+  root.innerHTML = `
+    <h3>Predicted finish</h3>
+    <div class="pred-num pred-${tone}">${escapeHtml(p.formatted)}</div>
+    <div class="pred-sub">${escapeHtml(deltaStr)} · based on ${escapeHtml(p.basedOn)}</div>`;
+}
+
+// ===== SMART WORKOUT HINT (in today card) =====
+function smartWorkoutHint() {
+  const cur = getCurrentWeekDay();
+  if (cur.beforeStart) return null;
+  const day = PLAN[cur.week - 1].days[cur.dayIdx];
+  if (day.type === 'rest') return null;
+
+  const recovery = recoveryScore();
+  const load = trainingLoad();
+  const hints = [];
+
+  if (recovery.signals >= 2 && recovery.score < 40) {
+    hints.push({ icon: '🛌', text: `Recovery low (${recovery.score}/100) — drop intensity 15-20% or move this session to tomorrow.` });
+  } else if (recovery.signals >= 2 && recovery.score < 60 && (day.type === 'quality' || day.type === 'long')) {
+    hints.push({ icon: '⚖️', text: `Recovery middling (${recovery.score}/100) — extend the warm-up and start the work piece slow; reassess at mile 2.` });
+  }
+
+  if (load.ratio != null && load.ratio > 1.5) {
+    hints.push({ icon: '🚨', text: `Training load very high (A:C ${load.ratio.toFixed(2)}). Drop today\'s mileage 25-30% or substitute easy.` });
+  } else if (load.ratio != null && load.ratio > 1.3 && day.type === 'quality') {
+    hints.push({ icon: '⚠️', text: `Training load pushing (A:C ${load.ratio.toFixed(2)}) — easy day might serve the long run on Saturday better.` });
+  }
+
+  return hints.length ? hints : null;
+}
+
 // ===== TODAY CARD =====
 function renderToday() {
   const cur = getCurrentWeekDay();
@@ -186,6 +279,14 @@ function renderToday() {
       </div>
     `;
   }
+
+  // Smart workout hint based on recovery + load
+  const hints = smartWorkoutHint();
+  const hintsHTML = hints ? `
+    <div class="smart-hints">
+      ${hints.map(h => `<div class="hint-row"><span class="hint-icon">${h.icon}</span><span class="hint-text">${escapeHtml(h.text)}</span></div>`).join('')}
+    </div>
+  ` : '';
 
   // Compare to last 3 similar workouts (helps see progression)
   const similar = findLastSimilarWorkouts(day, cur.week, cur.dayIdx, 3);
@@ -274,6 +375,7 @@ function renderToday() {
       </div>
     </div>
     ${purposeHTML}
+    ${hintsHTML}
     ${strengthHTML}
     ${similarHTML}
     ${renderRunLog(cur.week, cur.dayIdx, day, w, done, skipped)}
@@ -494,7 +596,19 @@ function renderCheckIn() {
 function renderTopStats() {
   const days = daysToRace();
   const cdEl = document.getElementById('cd-days');
-  if (cdEl) cdEl.textContent = days >= 0 ? days : '0';
+  if (cdEl) {
+    cdEl.textContent = days >= 0 ? days : '0';
+    // Pre-race urgency tier (visual color shift as race approaches)
+    const cdParent = cdEl.closest('.countdown');
+    if (cdParent) {
+      cdParent.classList.remove('cd-far', 'cd-mid', 'cd-close', 'cd-week', 'cd-today');
+      if (days <= 0)        cdParent.classList.add('cd-today');
+      else if (days <= 7)   cdParent.classList.add('cd-week');
+      else if (days <= 30)  cdParent.classList.add('cd-close');
+      else if (days <= 100) cdParent.classList.add('cd-mid');
+      else                  cdParent.classList.add('cd-far');
+    }
+  }
 
   const totals = totalsAcrossPlan();
   bindTopnavStats();
@@ -747,7 +861,10 @@ function logSleep() {
 // ===== INIT =====
 function renderAll() {
   renderYesterday();
+  renderAnomalies();
   renderToday();
+  renderRecovery();
+  renderPrediction();
   renderTodayRing();
   renderCheckIn();
   renderSchedule();
