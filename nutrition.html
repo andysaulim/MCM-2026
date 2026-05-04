@@ -389,10 +389,9 @@
 </main>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
 <script>
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const days = Math.max(0, Math.floor((RACE_DATE - new Date()) / (1000 * 60 * 60 * 24)));
-document.getElementById('ts-days').textContent = days;
+bindTopnavStats();
 
 document.getElementById('smoothie-grid').innerHTML = SMOOTHIES.map(s => `
   <div class="smoothie-card">

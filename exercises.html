@@ -344,11 +344,9 @@
 </main>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
 <script>
-const RACE_DATE = new Date('2026-10-25T07:55:00');
-const today = new Date();
-const days = Math.max(0, Math.floor((RACE_DATE - today) / (1000 * 60 * 60 * 24)));
-document.getElementById('ts-days').textContent = days;
+bindTopnavStats();
 
 function ytId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);

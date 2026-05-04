@@ -793,8 +793,8 @@
             <div class="progress-lbl">Lbs lost</div>
           </div>
           <div class="progress-stat">
-            <div class="progress-num" id="ps-sleep">—</div>
-            <div class="progress-lbl">Avg sleep (7d)</div>
+            <div class="progress-num" id="ps-streak">0</div>
+            <div class="progress-lbl">Day streak</div>
           </div>
         </div>
         <div class="progress-bar"><div class="progress-bar-fill" id="ps-bar" style="width: 0%"></div></div>
@@ -810,28 +810,7 @@
     <div class="week-strip" id="week-strip"></div>
   </section>
 
-  <section class="quick-log">
-    <div class="log-card">
-      <div class="log-card-title">
-        <span>Log weight</span>
-        <span class="last-val" id="last-weight"></span>
-      </div>
-      <div class="input-row">
-        <input type="number" id="weight-input" placeholder="190.0" step="0.1" />
-        <button class="btn btn-primary" onclick="logWeight()">Log</button>
-      </div>
-    </div>
-    <div class="log-card">
-      <div class="log-card-title">
-        <span>Log sleep</span>
-        <span class="last-val" id="last-sleep"></span>
-      </div>
-      <div class="input-row">
-        <input type="number" id="sleep-input" placeholder="6.5 hrs" step="0.1" />
-        <button class="btn btn-primary" onclick="logSleep()">Log</button>
-      </div>
-    </div>
-  </section>
+  <section id="morning-checkin" class="checkin-card"></section>
 
   <section>
     <h2 class="section-title">All 25 weeks · dashed = base rebuild</h2>
@@ -857,6 +836,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/data.js"></script>
+<script src="js/state.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
