@@ -441,6 +441,248 @@ function trainingLoad() {
   return { acute, chronic, acuteAvg, chronicAvg, ratio, status };
 }
 
+// ===== RECOVERY SCORE 0-100 (Whoop / Body Battery analogue) =====
+// Synthesizes last night's sleep, yesterday's RPE, and current training load.
+function recoveryScore() {
+  let score = 50;
+  const reasons = [];
+  let signals = 0;
+
+  // Sleep last night
+  const today = todayDate(); today.setHours(0,0,0,0);
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const recentSleep = mcmState.sleep.filter(s => {
+    const d = new Date(s.date); d.setHours(0,0,0,0);
+    return d.getTime() === today.getTime() || d.getTime() === yesterday.getTime();
+  });
+  if (recentSleep.length) {
+    const hrs = recentSleep[recentSleep.length - 1].hrs;
+    signals++;
+    if (hrs >= 7)      { score += 20; reasons.push(`+ ${hrs.toFixed(1)} hr sleep`); }
+    else if (hrs >= 6) { score += 10; reasons.push(`+ ${hrs.toFixed(1)} hr sleep`); }
+    else if (hrs >= 5) { score -= 5;  reasons.push(`− short sleep (${hrs.toFixed(1)} hr)`); }
+    else               { score -= 15; reasons.push(`− very short sleep (${hrs.toFixed(1)} hr)`); }
+  }
+
+  // Yesterday's RPE
+  const cur = getCurrentWeekDay();
+  if (!cur.beforeStart) {
+    let yWk = cur.week, yDi = cur.dayIdx - 1;
+    if (yDi < 0) { yWk--; yDi = 6; }
+    if (yWk >= 1) {
+      const yW = getWorkout(yWk, yDi);
+      if (yW.status === 'done' && yW.rpe) {
+        signals++;
+        if (yW.rpe >= 8)      { score -= 15; reasons.push(`− hard yesterday (RPE ${yW.rpe})`); }
+        else if (yW.rpe >= 6) { score -= 5;  reasons.push(`− moderate yesterday (RPE ${yW.rpe})`); }
+        else                  { score += 5;  reasons.push(`+ easy yesterday (RPE ${yW.rpe})`); }
+      }
+    }
+  }
+
+  // Training load
+  const load = trainingLoad();
+  if (load.ratio != null) {
+    signals++;
+    if (load.ratio > 1.5)      { score -= 20; reasons.push(`− very high load (A:C ${load.ratio.toFixed(2)})`); }
+    else if (load.ratio > 1.3) { score -= 10; reasons.push(`− pushing load (A:C ${load.ratio.toFixed(2)})`); }
+    else if (load.ratio < 0.8) { score += 5;  reasons.push(`+ recovered base`); }
+    else                       { score += 5;  reasons.push(`+ sweet spot load`); }
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  let status, recommendation;
+  if (score >= 80)      { status = 'recovered';  recommendation = 'Hit today as planned.'; }
+  else if (score >= 60) { status = 'ready';      recommendation = 'Workout as planned, listen to your body.'; }
+  else if (score >= 40) { status = 'tired';      recommendation = 'Consider easing intensity 10–20%.'; }
+  else                  { status = 'depleted';   recommendation = 'Strongly consider rest or very easy run.'; }
+
+  return { score, status, reasons, recommendation, signals };
+}
+
+// ===== PREDICTED MARATHON TIME (Riegel formula) =====
+function predictedMarathonTime() {
+  if (typeof PLAN === 'undefined') return null;
+  const candidates = [];
+  PLAN.forEach((wk, wi) => {
+    wk.days.forEach((d, di) => {
+      const w = getWorkout(wi + 1, di);
+      if (w.status === 'done' && w.actualMiles >= 4 && w.durationSec) {
+        candidates.push({ miles: w.actualMiles, sec: w.durationSec, type: d.type, week: wi + 1 });
+      }
+    });
+  });
+  if (candidates.length === 0) return null;
+
+  // Use the longest run with the lowest average pace ratio
+  // Project each to 26.2 via Riegel: t2 = t1 * (d2/d1)^1.06
+  const projections = candidates.map(c => ({
+    ...c,
+    projectedSec: c.sec * Math.pow(26.2 / c.miles, 1.06),
+  }));
+  // Bias toward longer + more recent runs — sort desc by miles*0.7 + recency
+  projections.sort((a, b) => (b.miles * 1.0 + b.week * 0.05) - (a.miles * 1.0 + a.week * 0.05));
+  const best = projections[0];
+
+  return {
+    basedOn: `${best.miles} mi run from week ${best.week}`,
+    sec: Math.round(best.projectedSec),
+    formatted: secToHms(Math.round(best.projectedSec)),
+    pacePerMile: paceFromMilesAndSec(best.miles, best.sec),
+    runCount: candidates.length,
+  };
+}
+
+// ===== ANOMALY DETECTOR (Apple Health Insights pattern) =====
+function detectAnomalies() {
+  const alerts = [];
+  if (typeof PLAN === 'undefined') return alerts;
+
+  // Rapid weight drop
+  const weights = [...mcmState.weights].sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (weights.length >= 3) {
+    const recent3 = weights.slice(-3);
+    const drop = recent3[0].lbs - recent3[2].lbs;
+    if (drop >= 3) {
+      alerts.push({ icon: '⚠️', title: 'Rapid weight drop', text: `Down ${drop.toFixed(1)} lbs across 3 logs. If unintentional, hydrate aggressively + add ~200 cal today.` });
+    }
+  }
+
+  // Sleep debt
+  const recent7Sleep = mcmState.sleep.slice(-7);
+  if (recent7Sleep.length >= 5) {
+    const avg = recent7Sleep.reduce((s, x) => s + x.hrs, 0) / recent7Sleep.length;
+    if (avg < 5.5) {
+      alerts.push({ icon: '😴', title: 'Sleep debt accumulating', text: `7-day avg ${avg.toFixed(1)} hrs. Cut training load this week if possible.` });
+    }
+  }
+
+  // RPE creep on easy runs
+  const easyRPEs = [];
+  PLAN.forEach((wk, wi) => {
+    wk.days.forEach((d, di) => {
+      const w = getWorkout(wi + 1, di);
+      if (w.status === 'done' && d.type === 'easy' && w.rpe) easyRPEs.push(w.rpe);
+    });
+  });
+  if (easyRPEs.length >= 6) {
+    const recent3 = easyRPEs.slice(-3);
+    const earlier = easyRPEs.slice(-6, -3);
+    const recentAvg = recent3.reduce((s, x) => s + x, 0) / recent3.length;
+    const earlierAvg = earlier.reduce((s, x) => s + x, 0) / earlier.length;
+    if (recentAvg - earlierAvg >= 1.5) {
+      alerts.push({ icon: '📈', title: 'Easy runs feel harder', text: `Recent easy RPE ${recentAvg.toFixed(1)} vs earlier ${earlierAvg.toFixed(1)}. Possible accumulating fatigue — back off intensity this week.` });
+    }
+  }
+
+  // Sessions skipped in a row
+  const cur = getCurrentWeekDay();
+  if (!cur.beforeStart && !cur.afterEnd) {
+    let missed = 0;
+    let wk = cur.week, di = cur.dayIdx - 1;
+    if (di < 0) { wk--; di = 6; }
+    while (wk >= 1) {
+      const d = PLAN[wk - 1].days[di];
+      const w = getWorkout(wk, di);
+      if (d.type === 'rest') { di--; if (di < 0) { wk--; di = 6; } continue; }
+      if (w.status === 'done') break;
+      if (w.status === 'skip') missed++;
+      else break;                                              // un-logged days don't count as skipped
+      di--;
+      if (di < 0) { wk--; di = 6; }
+    }
+    if (missed >= 3) {
+      alerts.push({ icon: '🚫', title: `${missed} sessions skipped in a row`, text: 'Consider stepping back a week in the plan to maintain progression safely.' });
+    }
+  }
+
+  return alerts;
+}
+
+// ===== PATTERN INSIGHTS (Whoop Trends pattern) =====
+function patternInsights() {
+  const insights = [];
+  if (typeof PLAN === 'undefined') return insights;
+
+  // Build a logged-runs list with sleep-before linkage
+  const start = new Date(START_DATE); start.setHours(0,0,0,0);
+  const runs = [];
+  PLAN.forEach((wk, wi) => {
+    wk.days.forEach((d, di) => {
+      const w = getWorkout(wi + 1, di);
+      if (w.status === 'done' && w.rpe) {
+        const dayDate = new Date(start); dayDate.setDate(start.getDate() + wi * 7 + di);
+        const sleepBefore = [...mcmState.sleep].reverse().find(s => {
+          const sd = new Date(s.date); sd.setHours(0,0,0,0);
+          const diffDays = (dayDate - sd) / 86400000;
+          return diffDays >= 0 && diffDays <= 1.5;
+        });
+        runs.push({ rpe: w.rpe, when: d.when, type: d.type, sleep: sleepBefore?.hrs ?? null });
+      }
+    });
+  });
+
+  // Insight: sleep ↔ RPE
+  const lowSleep = runs.filter(r => r.sleep != null && r.sleep < 6);
+  const highSleep = runs.filter(r => r.sleep != null && r.sleep >= 7);
+  if (lowSleep.length >= 2 && highSleep.length >= 2) {
+    const lowAvg = lowSleep.reduce((s, x) => s + x.rpe, 0) / lowSleep.length;
+    const highAvg = highSleep.reduce((s, x) => s + x.rpe, 0) / highSleep.length;
+    const diff = lowAvg - highAvg;
+    if (Math.abs(diff) >= 0.8) {
+      insights.push({
+        icon: '💤',
+        title: 'Sleep affects your RPE',
+        text: diff > 0
+          ? `After short sleep (<6 hr) your RPE averages ${lowAvg.toFixed(1)}, vs ${highAvg.toFixed(1)} after 7+ hr. Bank sleep before quality days.`
+          : `You handle short sleep well — RPE only ${diff.toFixed(1)} different.`,
+      });
+    }
+  }
+
+  // Insight: AM vs PM
+  const am = runs.filter(r => r.when === 'AM');
+  const pm = runs.filter(r => r.when === 'PM');
+  if (am.length >= 3 && pm.length >= 3) {
+    const amAvg = am.reduce((s, x) => s + x.rpe, 0) / am.length;
+    const pmAvg = pm.reduce((s, x) => s + x.rpe, 0) / pm.length;
+    if (Math.abs(amAvg - pmAvg) >= 0.7) {
+      const better = amAvg < pmAvg ? 'morning' : 'evening';
+      insights.push({
+        icon: '🕐',
+        title: `${better === 'morning' ? 'Morning' : 'Evening'} runs feel easier`,
+        text: `AM avg RPE ${amAvg.toFixed(1)} · PM avg RPE ${pmAvg.toFixed(1)}. Schedule key sessions in the ${better}.`,
+      });
+    }
+  }
+
+  // Insight: completion rate
+  let totalRuns = 0, completedRuns = 0;
+  PLAN.forEach((wk, wi) => {
+    wk.days.forEach((d, di) => {
+      if (d.type === 'rest') return;
+      const cur = getCurrentWeekDay();
+      if (!cur.beforeStart) {
+        const isPast = (wi + 1 < cur.week) || (wi + 1 === cur.week && di < cur.dayIdx);
+        if (!isPast) return;
+      } else { return; }
+      totalRuns++;
+      const w = getWorkout(wi + 1, di);
+      if (w.status === 'done') completedRuns++;
+    });
+  });
+  if (totalRuns >= 5) {
+    const pct = Math.round(completedRuns / totalRuns * 100);
+    insights.push({
+      icon: pct >= 80 ? '🎯' : '📋',
+      title: `${pct}% completion rate`,
+      text: `${completedRuns} of ${totalRuns} scheduled sessions done. ${pct >= 80 ? 'Consistency is the lever — keep it.' : pct >= 60 ? 'Solid. Push for 80%+ in the build phase.' : 'Sub-60% is risky for marathon prep — review the obstacles.'}`,
+    });
+  }
+
+  return insights;
+}
+
 // ===== TODAY'S GEAR HINT =====
 function buildDailyGear(day) {
   const t = day.type;
