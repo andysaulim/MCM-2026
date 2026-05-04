@@ -349,11 +349,15 @@ function buildDailySchedule(day, week) {
     items.push({ time: '6:30 AM', icon: '🍳', title: 'Breakfast', detail: 'Bigger meal since the run is hours away · oats + fruit + eggs · ~400 cal.' });
   }
 
-  // ===== MIDDAY =====
+  // ===== MIDDAY ===== (shift midday items earlier for Sunday's 3 PM restaurant start)
+  const earlyShift = isRestaurantNight && restaurant.start === '3:00 PM';
+  const lunchTime  = earlyShift ? '12:00 PM' : '12:30 PM';
+  const midWater   = earlyShift ? '1:30 PM'  : '3:00 PM';
+  const coffeeCut  = earlyShift ? '2:00 PM'  : '4:00 PM';
   items.push({ time: '9:00 AM',  icon: '💧', title: '16 oz water', detail: 'Refill bottle. Sip through morning.' });
-  items.push({ time: '12:30 PM', icon: '🍽', title: 'Lunch',       detail: 'Vegetarian + balanced · ~600 cal · 30g+ protein.' });
-  items.push({ time: '3:00 PM',  icon: '💧', title: '16 oz water', detail: 'Mid-afternoon hydration check.' });
-  items.push({ time: '4:00 PM',  icon: '☕', title: 'Last coffee',  detail: 'Cut caffeine by 4 PM to protect tonight\'s sleep.' });
+  items.push({ time: lunchTime,  icon: '🍽', title: 'Lunch',       detail: 'Vegetarian + balanced · ~600 cal · 30g+ protein.' });
+  items.push({ time: midWater,   icon: '💧', title: '16 oz water', detail: 'Mid-afternoon hydration check.' });
+  items.push({ time: coffeeCut,  icon: '☕', title: 'Last coffee',  detail: `Cut caffeine by ${coffeeCut} to protect tonight's sleep.` });
 
   // ===== EVENING — branch by day pattern =====
   if (isRestaurantNight) {
@@ -681,6 +685,51 @@ function patternInsights() {
   }
 
   return insights;
+}
+
+// ===== USER DAY-OF-WEEK PREFERENCES =====
+// Andy works Thu 9 AM – 10 PM (day job + restaurant), so strength can't be Thu.
+// Move strength workouts to Sunday morning (Sat morning is the long run; Sun
+// morning is the only other weekend slot before the 3 PM Sun restaurant shift).
+// Whatever was on Sunday previously (often an easy recovery jog) is sacrificed —
+// Thursday cannot host a workout given the work schedule, so it becomes rest.
+function applyUserDayPreferences() {
+  if (typeof PLAN === 'undefined') return;
+  const moveKeys = ['when', 'timeMin', 'type', 'title', 'desc', 'workout', 'pace', 'route', 'extras'];
+  PLAN.forEach(wk => {
+    const thuIdx = wk.days.findIndex(d => d.day === 'Thu');
+    const sunIdx = wk.days.findIndex(d => d.day === 'Sun');
+    if (thuIdx < 0 || sunIdx < 0) return;
+    const thu = wk.days[thuIdx];
+    const sun = wk.days[sunIdx];
+    if (thu.type !== 'strength') return;
+
+    // Move Thursday's strength content onto Sunday (replacing whatever was there).
+    moveKeys.forEach(k => { sun[k] = thu[k]; });
+    sun.when = 'AM';
+
+    // Thursday becomes a rest day (work blocks it).
+    thu.when = 'REST';
+    thu.type = 'rest';
+    thu.timeMin = 5;
+    thu.title = 'Rest day';
+    thu.desc = 'Day job 9–5:30 then restaurant 6–10 PM. Pushups + circuit only.';
+    thu.workout = { structure: [], total: 0 };
+    thu.pace = '—';
+    thu.route = '—';
+    thu.extras = ['pushups', 'circuit'];
+  });
+}
+applyUserDayPreferences();
+
+// ===== STRENGTH PRESCRIPTION (matches the progression table on the Strength page) =====
+function strengthPrescriptionForWeek(weekNum) {
+  if (weekNum <= 3)  return { sets: 2, reps: 8, load: 'Light · ~50% of expected work',  goal: 'Form, no soreness',     est: '25 min', phase: 'Phase 0 · Base rebuild' };
+  if (weekNum <= 9)  return { sets: 3, reps: 6, load: 'Moderate · +5 lb every 2 wks',  goal: 'Build base strength',   est: '30 min', phase: 'Phase 1 · Base + cut' };
+  if (weekNum <= 15) return { sets: 3, reps: 6, load: 'Heavier · push compound lifts', goal: 'Peak strength',         est: '35 min', phase: 'Phase 2 · Build' };
+  if (weekNum <= 21) return { sets: 2, reps: 6, load: 'Hold weight, reduce volume',    goal: 'Maintain, don\'t fatigue', est: '25 min', phase: 'Phase 3 · Peak' };
+  if (weekNum <= 24) return { sets: 2, reps: 5, load: 'Drop 30–40% load',              goal: 'Movement quality only', est: '20 min', phase: 'Phase 4 · Taper' };
+  return                   { sets: 0, reps: 0, load: 'None — bands + mobility only',   goal: 'Rest the system',       est: '10 min', phase: 'Race week' };
 }
 
 // ===== TODAY'S GEAR HINT =====
