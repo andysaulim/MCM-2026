@@ -196,9 +196,124 @@
 .progression-table th { background: var(--bg-elev); }
 .progression-table td.num { color: var(--accent); }
 
+/* Today's prescription card (top of page) */
+.rx-card {
+  background: linear-gradient(135deg, var(--strength-soft), var(--card) 60%);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: var(--radius-xl);
+  padding: 24px 28px;
+  margin-bottom: 28px;
+}
+.rx-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+}
+.rx-kicker {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--strength);
+  font-weight: 800;
+  display: flex; align-items: center; gap: 8px;
+}
+.rx-live-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(167, 139, 250, 0.2);
+  color: var(--strength);
+}
+.rx-live-badge.muted { background: var(--bg-elev); color: var(--text-faint); }
+.rx-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  margin-top: 6px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.rx-phase {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.rx-h-right {
+  text-align: right;
+  background: var(--bg-elev);
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+.rx-est {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.rx-est-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.rx-grid { display: grid; gap: 8px; }
+.rx-row { display: grid; grid-template-columns: 60px 1fr; gap: 12px; align-items: baseline; font-size: 13px; }
+.rx-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.rx-val { color: var(--text); font-weight: 500; }
+
+/* Warmup note */
+.warmup-note {
+  background: var(--bg-elev);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.warmup-note strong { color: var(--accent); }
+
+/* Exercise number badge (overlays the thumbnail) */
+.ex-num {
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 32px; height: 32px;
+  background: var(--accent);
+  color: #1a0a00;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  z-index: 2;
+}
+
 @media (max-width: 700px) {
   .day-summary { grid-template-columns: 1fr; }
   .exercise-grid { grid-template-columns: 1fr; }
+  .rx-title { font-size: 24px; }
+  .rx-card { padding: 18px 20px; }
 }
 </style>
 </head>
@@ -229,55 +344,21 @@
 
 <main>
   <div class="page-header">
-    <div class="page-kicker">Strength · Circuit · Bands</div>
-    <h1 class="page-title">The strength program</h1>
-    <p class="page-subtitle">8 main lifts on Thursday. 5-move circuit on most days. 5 band exercises Mon and Thu. Click any exercise for the form video.</p>
+    <div class="page-kicker">Sunday morning · ~30 min</div>
+    <h1 class="page-title">Strength program</h1>
+    <p class="page-subtitle">One full lift session on Sunday morning, plus a daily core circuit and twice-weekly resistance bands. Numbered execution order below — do them in sequence.</p>
   </div>
 
-  <h2 class="section-title">Weekly schedule</h2>
-  <div class="day-summary">
-    <div class="day-card">
-      <div class="day-card-header">
-        <div class="day-card-icon strength">🏋️</div>
-        <div>
-          <div class="day-card-title">Strength A</div>
-          <div class="day-card-meta">THU AM · 30–35 min</div>
-        </div>
-      </div>
-      <div class="day-card-when">Full lift session — squats, deadlifts, presses. Build through cycle, drop weight in taper. Done before strength on the same day as a circuit and bands.</div>
-    </div>
-    <div class="day-card">
-      <div class="day-card-header">
-        <div class="day-card-icon circuit">🔄</div>
-        <div>
-          <div class="day-card-title">Core + Lower Circuit</div>
-          <div class="day-card-meta">MON · TUE · THU · SAT · SUN · 8–10 min</div>
-        </div>
-      </div>
-      <div class="day-card-when">Bodyweight work that maintains hip stability, glute activation, and a strong core. The most consistent thing in your week — 5 days out of 7.</div>
-    </div>
-    <div class="day-card">
-      <div class="day-card-header">
-        <div class="day-card-icon bands">🎗</div>
-        <div>
-          <div class="day-card-title">Resistance Bands</div>
-          <div class="day-card-meta">MON · THU · 7 min</div>
-        </div>
-      </div>
-      <div class="day-card-when">Hip and glute activation work. Critical for runners — addresses the deep stabilizers that prevent IT band, knee, and hip issues. Quick and dirty.</div>
-    </div>
-  </div>
-
-  <div class="callout">
-    <div class="callout-title">How to use this page</div>
-    <p>Each exercise card shows what to do, how many sets and reps, what equipment, why it matters for marathon running, and three to four critical form cues. Tap the play button to watch the demo video on YouTube — these are vetted, high-quality demos from coaches you can trust.</p>
-  </div>
+  <div id="today-prescription"></div>
 
   <section class="exercise-section">
     <h2 class="section-title">
-      <span>Main strength lifts (Thursday)</span>
-      <span class="section-title-rt">8 exercises · 30–35 min</span>
+      <span>Strength A · execution order</span>
+      <span class="section-title-rt">8 lifts · do them in sequence · ~30 min</span>
     </h2>
+    <div class="warmup-note">
+      <strong>Before you lift:</strong> 5 min of leg swings, hip circles, bodyweight squats × 10, arm circles. Cold lifts are how runners pull hamstrings.
+    </div>
     <div class="exercise-grid" id="strength-grid"></div>
   </section>
 
@@ -350,11 +431,46 @@
 <script>
 bindTopnavStats();
 
+// ===== TODAY'S PRESCRIPTION (phase-aware) =====
+(function() {
+  const cur = getCurrentWeekDay();
+  const wkNum = cur.beforeStart ? 1 : cur.week;
+  const rx = strengthPrescriptionForWeek(wkNum);
+  const today = PLAN[wkNum - 1].days[cur.dayIdx];
+  const isStrengthToday = today && today.type === 'strength';
+
+  const liveBadge = isStrengthToday
+    ? `<span class="rx-live-badge">● Today</span>`
+    : `<span class="rx-live-badge muted">Sunday</span>`;
+
+  document.getElementById('today-prescription').innerHTML = `
+    <div class="rx-card">
+      <div class="rx-head">
+        <div class="rx-h-left">
+          <span class="rx-kicker">This week's prescription ${liveBadge}</span>
+          <h2 class="rx-title">${rx.sets ? `${rx.sets} sets × ${rx.reps} reps` : rx.load}</h2>
+          <div class="rx-phase">${escapeHtml(rx.phase)}</div>
+        </div>
+        <div class="rx-h-right">
+          <div class="rx-est">${escapeHtml(rx.est)}</div>
+          <div class="rx-est-lbl">est. duration</div>
+        </div>
+      </div>
+      <div class="rx-grid">
+        <div class="rx-row"><span class="rx-lbl">Load</span><span class="rx-val">${escapeHtml(rx.load)}</span></div>
+        <div class="rx-row"><span class="rx-lbl">Goal</span><span class="rx-val">${escapeHtml(rx.goal)}</span></div>
+      </div>
+    </div>
+  `;
+})();
+
 function ytId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
 }
-function exCard(ex) {
+
+// Numbered execution-order card for main lifts; static description card for circuit + bands.
+function exCard(ex, index) {
   const id = ytId(ex.videoUrl);
   const thumb = id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
   const cuesHTML = ex.formCues ? `
@@ -363,12 +479,14 @@ function exCard(ex) {
       <ul>${ex.formCues.map(c => `<li>${c}</li>`).join('')}</ul>
     </div>
   ` : '';
+  const numHTML = (typeof index === 'number') ? `<div class="ex-num">${index + 1}</div>` : '';
   return `
     <div class="ex-card">
       <a class="ex-thumb" href="${ex.videoUrl}" target="_blank" rel="noopener" title="Watch ${ex.videoLabel || 'demo'}">
         ${thumb ? `<img src="${thumb}" alt="${ex.name} demo" loading="lazy">` : ''}
         <div class="ex-thumb-overlay"><div class="ex-play">▶</div></div>
         ${ex.videoLabel ? `<div class="ex-thumb-label">${ex.videoLabel}</div>` : ''}
+        ${numHTML}
       </a>
       <div class="ex-body">
         <div class="ex-name">${ex.name}</div>
@@ -382,7 +500,7 @@ function exCard(ex) {
     </div>
   `;
 }
-document.getElementById('strength-grid').innerHTML = EXERCISES.strength.map(exCard).join('');
+document.getElementById('strength-grid').innerHTML = EXERCISES.strength.map((ex, i) => exCard(ex, i)).join('');
 document.getElementById('circuit-grid').innerHTML = EXERCISES.circuit.map(exCard).join('');
 document.getElementById('bands-grid').innerHTML = EXERCISES.bands.map(exCard).join('');
 </script>
