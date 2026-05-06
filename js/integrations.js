@@ -97,11 +97,11 @@ function renderSettings() {
   body.innerHTML = `
     <section class="settings-section">
       <h3 class="settings-h">Reminders &amp; calendar</h3>
-      <p class="settings-hint" style="margin-bottom:14px;">Export your full training plan as a calendar file. iOS / Google / Apple Calendar imports it and handles the reminders — every workout becomes a calendar event with a 30-min-before alarm, plus a daily morning check-in at your wake time.</p>
+      <p class="settings-hint" style="margin-bottom:14px;">Export your full training plan as a calendar file. Google Calendar (Android) and Apple Calendar (iOS) both import it natively and handle the reminders — every workout becomes a calendar event with a 30-min-before alarm, plus a daily morning check-in at your wake time.</p>
       <div class="settings-actions">
         <button class="btn btn-primary" onclick="exportIcs()">Export to calendar (.ics)</button>
       </div>
-      <p class="settings-hint" style="margin-top:10px; font-size:11px;">After download, tap the file on your phone and choose "Add All to Calendar." Re-export anytime — events have stable UIDs so re-imports update existing entries instead of duplicating.</p>
+      <p class="settings-hint" style="margin-top:10px; font-size:11px;">After download: <strong>Android</strong> — open the .ics from Downloads or the notification, choose Google Calendar, tap Save. <strong>iOS</strong> — tap the file and choose "Add All to Calendar." Re-export anytime — events have stable UIDs so re-imports update existing entries instead of duplicating.</p>
     </section>
 
     <section class="settings-section">
