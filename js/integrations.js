@@ -96,6 +96,15 @@ function renderSettings() {
   const prefs = getUserPrefs();
   body.innerHTML = `
     <section class="settings-section">
+      <h3 class="settings-h">Reminders &amp; calendar</h3>
+      <p class="settings-hint" style="margin-bottom:14px;">Export your full training plan as a calendar file. iOS / Google / Apple Calendar imports it and handles the reminders — every workout becomes a calendar event with a 30-min-before alarm, plus a daily morning check-in at your wake time.</p>
+      <div class="settings-actions">
+        <button class="btn btn-primary" onclick="exportIcs()">Export to calendar (.ics)</button>
+      </div>
+      <p class="settings-hint" style="margin-top:10px; font-size:11px;">After download, tap the file on your phone and choose "Add All to Calendar." Re-export anytime — events have stable UIDs so re-imports update existing entries instead of duplicating.</p>
+    </section>
+
+    <section class="settings-section">
       <h3 class="settings-h">Schedule times</h3>
       <p class="settings-hint" style="margin-bottom:14px;">Customize the daily schedule. Times shown 12-hr; pickers use 24-hr. Pre-run snacks auto-shift 30-45 min before each run.</p>
       <div class="prefs-grid">
@@ -172,6 +181,127 @@ function clearAllData() {
   localStorage.removeItem(STATE_KEY);
   showToast('Data cleared · reloading');
   setTimeout(() => location.reload(), 800);
+}
+
+// ===== CALENDAR EXPORT (.ics) =====
+// Generates a calendar file the user can import into iOS / Google / Apple
+// Calendar. Each scheduled workout becomes an event with a 30-min-before alarm,
+// plus one daily morning check-in reminder at the user's wake time. Times are
+// written as local with TZID=America/New_York; safe for users actually in ET.
+function pad2(n) { return String(n).padStart(2, '0'); }
+function icsDate(yr, mo, dy, h, m) { return `${yr}${pad2(mo)}${pad2(dy)}T${pad2(h)}${pad2(m)}00`; }
+function icsEscape(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+
+function generateIcs() {
+  if (typeof PLAN === 'undefined') return '';
+  const prefs = getUserPrefs();
+  const TZ = 'America/New_York';
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//MCM 2026 Training//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:MCM 2026 Training',
+    'X-WR-TIMEZONE:' + TZ,
+    'X-WR-CALDESC:Marathon training plan with 30-min reminders',
+  ];
+
+  const startDay = new Date(2026, 4, 4);                                  // May 4 2026 local
+  const nowStamp = (() => {
+    const d = new Date();
+    return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+  })();
+
+  const emojiFor = { easy: '🏃', quality: '⚡', long: '🛣️', strength: '🏋️', tune: '🏁', race: '🏆', rest: '💤' };
+
+  PLAN.forEach((wk, wi) => {
+    wk.days.forEach((d, di) => {
+      if (d.type === 'rest') return;
+
+      const dayDate = new Date(startDay);
+      dayDate.setDate(startDay.getDate() + wi * 7 + di);
+
+      const isMonOrFri = ['Mon', 'Fri'].includes(d.day);
+      const userPrefersNight = isMonOrFri && d.type !== 'strength';
+      let startStr;
+      if (userPrefersNight)            startStr = prefs.pmRunTime;
+      else if (d.when === 'AM')        startStr = prefs.amRunTime;
+      else if (d.when === 'PM')        startStr = prefs.pmRunTime;
+      else                              startStr = prefs.amRunTime;
+      const [sh, sm] = startStr.split(':').map(Number);
+
+      const durMin = Math.max(30, d.timeMin || 60);
+      const totalStart = sh * 60 + sm;
+      const totalEnd   = totalStart + durMin;
+      const eh = Math.floor(totalEnd / 60) % 24;
+      const em = totalEnd % 60;
+      const carryDay = totalEnd >= 1440 ? 1 : 0;
+      const endDate = new Date(dayDate);
+      endDate.setDate(dayDate.getDate() + carryDay);
+
+      const summary = `${emojiFor[d.type] || '🏃'} ${d.title}`;
+      const descParts = [d.desc];
+      if (d.workout?.total) descParts.push(`${d.workout.total} mi · ${d.pace}`);
+      if (d.route && d.route !== '—') descParts.push(`Route: ${d.route}`);
+
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:mcm2026-w${wi + 1}d${di}@andysaulim.github.io`,
+        `DTSTAMP:${nowStamp}`,
+        `DTSTART;TZID=${TZ}:${icsDate(dayDate.getFullYear(), dayDate.getMonth() + 1, dayDate.getDate(), sh, sm)}`,
+        `DTEND;TZID=${TZ}:${icsDate(endDate.getFullYear(), endDate.getMonth() + 1, endDate.getDate(), eh, em)}`,
+        `SUMMARY:${icsEscape(summary)}`,
+        `DESCRIPTION:${icsEscape(descParts.join('\n'))}`,
+      );
+      if (d.route && d.route !== '—') lines.push(`LOCATION:${icsEscape(d.route)}`);
+      lines.push(
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'TRIGGER:-PT30M',
+        `DESCRIPTION:${icsEscape(d.title)} in 30 min`,
+        'END:VALARM',
+        'END:VEVENT',
+      );
+    });
+  });
+
+  // One recurring daily morning check-in reminder at wake time
+  const [wh, wm] = prefs.wakeTime.split(':').map(Number);
+  lines.push(
+    'BEGIN:VEVENT',
+    'UID:mcm2026-daily-checkin@andysaulim.github.io',
+    `DTSTAMP:${nowStamp}`,
+    `DTSTART;TZID=${TZ}:${icsDate(2026, 5, 4, wh, wm)}`,
+    `DTEND;TZID=${TZ}:${icsDate(2026, 5, 4, wh, wm + 5)}`,
+    'RRULE:FREQ=DAILY;UNTIL=20261026T000000Z',
+    'SUMMARY:📋 Morning check-in',
+    'DESCRIPTION:Log weight, sleep, and start the day. Open the app.',
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'TRIGGER:PT0M',
+    'DESCRIPTION:Morning check-in',
+    'END:VALARM',
+    'END:VEVENT',
+  );
+
+  lines.push('END:VCALENDAR');
+  return lines.filter(Boolean).join('\r\n');
+}
+
+function exportIcs() {
+  const ics = generateIcs();
+  if (!ics) { showToast('Plan not loaded', 'warn'); return; }
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mcm2026-training.ics';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  showToast('Calendar file ready · open it to import', 'success');
 }
 
 // ===== SCHEDULE PREFS HANDLERS =====
